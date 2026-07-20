@@ -1,0 +1,887 @@
+[
+  {
+    "document_id": "doc_flatt_000001",
+    "author": "Bruce Flatt",
+    "title": "Q1 2012 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2012-01-01",
+      "end_date": "2012-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2012/bam-2012-q1-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2012_q1.pdf",
+    "sha256": "70c416317b724890873b93df173e3e189605b97db9db1cdbead09907d7d9a952",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000002",
+    "author": "Bruce Flatt",
+    "title": "Q2 2012 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2012-04-01",
+      "end_date": "2012-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2012/bam-2012-q2-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2012_q2.pdf",
+    "sha256": "c5b8ff455b297c0fc4c335ed7a14bfe3727caa1ae25a4f5d91fe3e7d384b9340",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000003",
+    "author": "Bruce Flatt",
+    "title": "Q3 2012 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2012-07-01",
+      "end_date": "2012-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2012/bam-2012-q3-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2012_q3.pdf",
+    "sha256": "9206931c3129ae90e10ffe0f4a8e7e41a895ddace659dcd4f57e93d6e37bf537",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000004",
+    "author": "Bruce Flatt",
+    "title": "Q4 2012 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2012-10-01",
+      "end_date": "2012-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2012/bam-2012-q4-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2012_q4.pdf",
+    "sha256": "49a0b97a494fbb1805e79a5e7a2aa336add1918f96d862d4bcb813f963b73400",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000005",
+    "author": "Bruce Flatt",
+    "title": "Q1 2013 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2013-01-01",
+      "end_date": "2013-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2013/q1-2013-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2013_q1.pdf",
+    "sha256": "9cb73c3a992d75c19ddef5139cf71fa851d7014f5a9ee8540511652065bb6f7e",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000006",
+    "author": "Bruce Flatt",
+    "title": "Q2 2013 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2013-04-01",
+      "end_date": "2013-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2013/q2-2013-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2013_q2.pdf",
+    "sha256": "be296a0f7bbfa1f89e465c2be81e7a82103cc67a71e8863a052ff47494db0e3c",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000007",
+    "author": "Bruce Flatt",
+    "title": "Q3 2013 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2013-07-01",
+      "end_date": "2013-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2013/q3-2013-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2013_q3.pdf",
+    "sha256": "816dd98902e86df7c5e6cbd8b622f147652945f2b73a09edaa37bf188f45aec4",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000008",
+    "author": "Bruce Flatt",
+    "title": "Q4 2013 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2013-10-01",
+      "end_date": "2013-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2013/q4-2013-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2013_q4.pdf",
+    "sha256": "4a398c27cbe589b1c8a4c63c589d8ae920dd3f3c704f328ced2998ba7496f78a",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000009",
+    "author": "Bruce Flatt",
+    "title": "Q1 2014 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2014-01-01",
+      "end_date": "2014-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2014/bam-q1-2014-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2014_q1.pdf",
+    "sha256": "6ff27b8974e664ae22dda35df264c615ddfd96a78eb4c9741586af101c5b7c5c",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000010",
+    "author": "Bruce Flatt",
+    "title": "Q2 2014 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2014-04-01",
+      "end_date": "2014-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2014/bam-q2-2014-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2014_q2.pdf",
+    "sha256": "d14db19f6ce0f38fd52b45a9dbd22728f43a15ab32dc81845b5e81143aa0ffa5",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000011",
+    "author": "Bruce Flatt",
+    "title": "Q3 2014 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2014-07-01",
+      "end_date": "2014-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2014/bam-q3-2014-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2014_q3.pdf",
+    "sha256": "5ca6a16c0d5d9a1b55a4080ebdfb20f113498e01a6411878a4ff98ac33200873",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000012",
+    "author": "Bruce Flatt",
+    "title": "Q4 2014 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2014-10-01",
+      "end_date": "2014-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2014/bam-q4-2014-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2014_q4.pdf",
+    "sha256": "a596d9675d99c9e0e27ead756e3b400f6714c15ea9fb7e40ef510842d39ea859",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000013",
+    "author": "Bruce Flatt",
+    "title": "Q1 2015 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2015-01-01",
+      "end_date": "2015-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2015/bam-q1-2015-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2015_q1.pdf",
+    "sha256": "986c674fe3c1ac0b130b77ec28ed0cc31bf99dd23a54fdc9fbce14b3cbf4261a",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000014",
+    "author": "Bruce Flatt",
+    "title": "Q2 2015 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2015-04-01",
+      "end_date": "2015-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2015/bam-q2-2015-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2015_q2.pdf",
+    "sha256": "36b2c120b83f0d34e044e4cacf98fcc7e802b3dc864f380239e5bd640d113d2b",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000015",
+    "author": "Bruce Flatt",
+    "title": "Q3 2015 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2015-07-01",
+      "end_date": "2015-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2015/bam-q3-2015-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2015_q3.pdf",
+    "sha256": "dcdc7f4f2a4fa2b0c09dd490e6d5b47604b4e853f0ad910550aff5549e97095d",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000016",
+    "author": "Bruce Flatt",
+    "title": "Q4 2015 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2015-10-01",
+      "end_date": "2015-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2015/bam-q4-2015-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2015_q4.pdf",
+    "sha256": "78eeed429f258870752cb7578b50c9c788b1f68b592ceddb42b2966ee809871e",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000017",
+    "author": "Bruce Flatt",
+    "title": "Q1 2016 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2016-01-01",
+      "end_date": "2016-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2016/bam-q1-2016-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2016_q1.pdf",
+    "sha256": "9eae904641d9514a4cd053647e0929a0b57eeb7051d0f587d848e4b849628352",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000018",
+    "author": "Bruce Flatt",
+    "title": "Q2 2016 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2016-04-01",
+      "end_date": "2016-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2016/bam-q2-2016-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2016_q2.pdf",
+    "sha256": "2c094cb2ff4dd6adbaa5db5e1857d400916a965562ba10ce770a0b4b9118b738",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000019",
+    "author": "Bruce Flatt",
+    "title": "Q3 2016 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2016-07-01",
+      "end_date": "2016-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2016/q3-2016-letter-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2016_q3.pdf",
+    "sha256": "43e72e53306dfb0809da8fc0942103e45e02a650b5221add2b569f89d6aae144",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000020",
+    "author": "Bruce Flatt",
+    "title": "Q4 2016 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2016-10-01",
+      "end_date": "2016-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2016/q4-2016-letter-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2016_q4.pdf",
+    "sha256": "cfbbc9a6155809231dba43862851af2f8adcea2a5cc417ef4e129c6d96f95e13",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000021",
+    "author": "Bruce Flatt",
+    "title": "Q1 2017 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2017-01-01",
+      "end_date": "2017-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2017/bam-q1-2017-ltr-to-shareholders-final.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2017_q1.pdf",
+    "sha256": "49f2e3eb3fd9a8b4e8afbf3a8aac7a4612653c97024150aafd969bc4f08f7607",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000022",
+    "author": "Bruce Flatt",
+    "title": "Q2 2017 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2017-04-01",
+      "end_date": "2017-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2017/bam-q2-2017-ltr-to-shareholders-v2.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2017_q2.pdf",
+    "sha256": "3922de20138c6511fabe6daa37ae12dc0c640407349acb113cc5a379ff1cfa25",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000023",
+    "author": "Bruce Flatt",
+    "title": "Q3 2017 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2017-07-01",
+      "end_date": "2017-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/f-bam-q3-2017-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2017_q3.pdf",
+    "sha256": "b23a2861af62b5fa5f4d1da3083b0e4121188a5e6d989a9f2b246159b377d9fa",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000024",
+    "author": "Bruce Flatt",
+    "title": "Q4 2017 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2017-10-01",
+      "end_date": "2017-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/f-bam-year-end-2017-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2017_q4.pdf",
+    "sha256": "7c407b78332e149879782bb549c33db6c59b4f963e330d25f2fe1faf76b58c80",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000025",
+    "author": "Bruce Flatt",
+    "title": "Q1 2018 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2018-01-01",
+      "end_date": "2018-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2018/f-bam-q1-2018-ltr-to-shareholders-r.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2018_q1.pdf",
+    "sha256": "26b5ed48fe81824b1d69fe2b9bcba6e27b12389ddce7ac3c4f22ab4c57f11039",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000026",
+    "author": "Bruce Flatt",
+    "title": "Q2 2018 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2018-04-01",
+      "end_date": "2018-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2018/bam-q2-2018-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2018_q2.pdf",
+    "sha256": "d2f1d8a02f3402f0baee5ecd6be57b3aa1a3a9a9e49a452d1279beea49d364f7",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000027",
+    "author": "Bruce Flatt",
+    "title": "Q3 2018 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2018-07-01",
+      "end_date": "2018-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2018/bam-q3-2018-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2018_q3.pdf",
+    "sha256": "17cde967d73b95b336a660bcd51d970f73a6e7b60b3291dfbcee2593d6ff121e",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000028",
+    "author": "Bruce Flatt",
+    "title": "Q4 2018 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2018-10-01",
+      "end_date": "2018-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2018/bam-q4-2018-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2018_q4.pdf",
+    "sha256": "a852ebb59441fb3438a0b59eb8d002f04ddaea7f820a52d974c2daaea075c090",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000029",
+    "author": "Bruce Flatt",
+    "title": "Q1 2019 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2019-01-01",
+      "end_date": "2019-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2019/f-bam-q1-2019-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2019_q1.pdf",
+    "sha256": "d21ebf7234101b55fead7fab6c9761f514df2c8bfa34b27b70a2270d31ae3163",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000030",
+    "author": "Bruce Flatt",
+    "title": "Q2 2019 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2019-04-01",
+      "end_date": "2019-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2019/f-bam-q2-2019-lts.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2019_q2.pdf",
+    "sha256": "e14a5f7ea38208617beff576bb8232626cfb785a4fb9c82fdd1eb7ef17540c73",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000031",
+    "author": "Bruce Flatt",
+    "title": "Q3 2019 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2019-07-01",
+      "end_date": "2019-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2019/f-bam-q3-2019-lts.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2019_q3.pdf",
+    "sha256": "10d4dcfde28544ca7f04ed3f60187bf0efd03aa90b541ccd209fb4fc4dd192dd",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000032",
+    "author": "Bruce Flatt",
+    "title": "Q4 2019 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2019-10-01",
+      "end_date": "2019-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2019/q4-2019-letter-to-shareholders-v1.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2019_q4.pdf",
+    "sha256": "5b9db9ffa362de16a3ffb07fd005085497b5cb1b4ff7770d67be74a5f8bf080d",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000033",
+    "author": "Bruce Flatt",
+    "title": "Q1 2020 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2020-01-01",
+      "end_date": "2020-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2020/f-bam-q1-2020-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2020_q1.pdf",
+    "sha256": "bca70548bbe8afbe6471796c9090c6fe5ae1d5114b46080c717cf585021364c2",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000034",
+    "author": "Bruce Flatt",
+    "title": "Q2 2020 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2020-04-01",
+      "end_date": "2020-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2020/f-bam-q2-2020-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2020_q2.pdf",
+    "sha256": "dee34a90192f8423f9fab152bb673208cb36cb7ef4804dac37e0844a3ac509c4",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000035",
+    "author": "Bruce Flatt",
+    "title": "Q3 2020 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2020-07-01",
+      "end_date": "2020-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2020/letters-to-shareholders-q3.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2020_q3.pdf",
+    "sha256": "d47f0e00ce06800f479c8493db465febde3469c208f7d4df1cd0a05be588e0cc",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000036",
+    "author": "Bruce Flatt",
+    "title": "Q4 2020 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2020-10-01",
+      "end_date": "2020-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2020/letters-to-shareholders-q4.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2020_q4.pdf",
+    "sha256": "0b46b9711b563c5fd577b58318f7cc2e08fed74f12404c516def5d1c108bdead",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000037",
+    "author": "Bruce Flatt",
+    "title": "Q1 2021 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2021-01-01",
+      "end_date": "2021-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2021/letter-to-shareholders-q1-2021.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2021_q1.pdf",
+    "sha256": "73308746c4babe6adb0177c7c089d41f4579dc40f56d7fd08c728d88df0c3480",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000038",
+    "author": "Bruce Flatt",
+    "title": "Q2 2021 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2021-04-01",
+      "end_date": "2021-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2021/q2-2021-letter-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2021_q2.pdf",
+    "sha256": "c8857056603d9c606973e785382209015e8f1c05a085557561a0d088d7b519d6",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000039",
+    "author": "Bruce Flatt",
+    "title": "Q3 2021 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2021-07-01",
+      "end_date": "2021-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2021/q3-2021-letter-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2021_q3.pdf",
+    "sha256": "1ce51487090ec3aa4d7748a5892d980bc645827b46c752f22e997fc12b3e5fe1",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000040",
+    "author": "Bruce Flatt",
+    "title": "Q4 2021 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2021-10-01",
+      "end_date": "2021-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2021/q4-2021-ltr-to-shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2021_q4.pdf",
+    "sha256": "000be7eff5bb97d3146282a1200bc27596fc754ff36803009866a051b42f752e",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000041",
+    "author": "Bruce Flatt",
+    "title": "Q1 2022 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2022-01-01",
+      "end_date": "2022-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2022/q1-2022-letter-to-shareholders-1.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2022_q1.pdf",
+    "sha256": "ac290f1b7564ec0eeca86f605be28b6e593a69eb1a97c31e8f1f8316d2945b90",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000042",
+    "author": "Bruce Flatt",
+    "title": "Q2 2022 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2022-04-01",
+      "end_date": "2022-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2022/2022-Q2-BAM-Ltr-to-Shareholders-FF-B.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2022_q2.pdf",
+    "sha256": "9b56fa61944302fc5a98bb1b03bad35ba4c63644950e573a9563bb9e1e70e685",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000043",
+    "author": "Bruce Flatt",
+    "title": "Q3 2022 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2022-07-01",
+      "end_date": "2022-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2022/2022-Q3-BAM-Ltr-to-Shareholders.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2022_q3.pdf",
+    "sha256": "48f6ea00cdf2e99f2f2873d3b0ae4486bfe379ba2a60b5f8088dcd91996d2524",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000044",
+    "author": "Bruce Flatt",
+    "title": "Q4 2022 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2022-10-01",
+      "end_date": "2022-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2022/BN-Q4-2022-Ltr-to-Shareholders-F.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2022_q4.pdf",
+    "sha256": "e29bdeb55e446f63744f5c093004b3f014c2762134fc0c1df3e0bb0a45562c91",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000045",
+    "author": "Bruce Flatt",
+    "title": "Q1 2023 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2023-01-01",
+      "end_date": "2023-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2023/Q1-23 BN Ltr_to_Shareholders vF.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2023_q1.pdf",
+    "sha256": "d357349b26e08d79ad3b6c91f648ae7527253d9dd8c7427d1f2ce5acbd1a1e33",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000046",
+    "author": "Bruce Flatt",
+    "title": "Q2 2023 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2023-04-01",
+      "end_date": "2023-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2023/Q2-23 BN Ltr_to_Shareholders vF.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2023_q2.pdf",
+    "sha256": "b037c64b07f5f9c14d701fefdb7b71e23387ac4deb7f2331a0f0da7e7d7bc157",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000047",
+    "author": "Bruce Flatt",
+    "title": "Q3 2023 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2023-07-01",
+      "end_date": "2023-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2023/Q3-23 BN Ltr_to_Shareholders_F.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2023_q3.pdf",
+    "sha256": "4c58d1917a61539f7dc26c78b597a2a26c35036296fe7cbcb3f8ae3a15a97ad8",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000048",
+    "author": "Bruce Flatt",
+    "title": "Q4 2023 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2023-10-01",
+      "end_date": "2023-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2023/Q4-23 BN Ltr_to_Shareholders_F.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2023_q4.pdf",
+    "sha256": "80ae9bfceccc046dbe7665934d5119771ed51fb06710cdeab8ab787f15518e2e",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000049",
+    "author": "Bruce Flatt",
+    "title": "2023 Summary and Update",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": null,
+      "end_date": null
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2023/BN 2023 Letter - 2023 Summary and Update_F.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2023_summary_update.pdf",
+    "sha256": "5949dd974bc4972083389ffd619afe652dfccd6340d53172de23ef23a45cea54",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000050",
+    "author": "Bruce Flatt",
+    "title": "Q1 2024 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2024-01-01",
+      "end_date": "2024-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2024/BN Q1 2024_Ltr_to_Shareholders_vF.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2024_q1.pdf",
+    "sha256": "6e0bcbc53da53aa4b19249332f96c236b7654cab5030ff09c9b31a685c22cca1",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000051",
+    "author": "Bruce Flatt",
+    "title": "Q2 2024 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2024-04-01",
+      "end_date": "2024-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2024/BN Q2 2024_Ltr_to_Shareholders_F.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2024_q2.pdf",
+    "sha256": "4424c99c70d89be36bd7e3d43009692bb49b0391b8e4f70edac47d659416de5b",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000052",
+    "author": "Bruce Flatt",
+    "title": "Q3 2024 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2024-07-01",
+      "end_date": "2024-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2024/BN Q3 2024_Ltr_to_Shareholders_F.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2024_q3.pdf",
+    "sha256": "b4b671d58a4e306ff601bff37a788874ee8f2fb14b1c5301fa6b41b575c6caf5",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000053",
+    "author": "Bruce Flatt",
+    "title": "Q4 2024 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2024-10-01",
+      "end_date": "2024-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2025/BN Q4 2024_Ltr_to_Shareholders_F.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2024_q4.pdf",
+    "sha256": "1c5a65074a3b5e8aaa6055ae1a1ee584c3f7cebe9a138f5e250549fbc012b147",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000054",
+    "author": "Bruce Flatt",
+    "title": "Q1 2025 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2025-01-01",
+      "end_date": "2025-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2025/bn-q1-2025-ltr-to-shareholders-vf.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2025_q1.pdf",
+    "sha256": "50b005fefe54bc34069360e1e322d9f1205efd78308ce3189952e6b7cb5ed8f9",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000055",
+    "author": "Bruce Flatt",
+    "title": "Q2 2025 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2025-04-01",
+      "end_date": "2025-06-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/brookfield-bn/reports-filings/letter-to-shareholder/q2-2025-bn-letter-to-shareholders-f.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2025_q2.pdf",
+    "sha256": "1853dc92bb7b70e642c23a68c8c66d0554eefeb3634e9db5e460113c4615e318",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000056",
+    "author": "Bruce Flatt",
+    "title": "Q3 2025 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2025-07-01",
+      "end_date": "2025-09-30"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2025/Q3 Brookfield Letter to Shareholders vF.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2025_q3.pdf",
+    "sha256": "fc4bb987dfe9a1d07c340159e2ccbae6c14bb50cf7c7b20d393a0abf5b414a74",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000057",
+    "author": "Bruce Flatt",
+    "title": "Q4 2025 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2025-10-01",
+      "end_date": "2025-12-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2026/Q4-25 BN Letter to Shareholders_vF.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2025_q4.pdf",
+    "sha256": "ace891de23426e7ba26c5b80ab8b73c5b7e7473ad936629bd83a3eb45ceae978",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000058",
+    "author": "Bruce Flatt",
+    "title": "March 2025 Update Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": null,
+      "end_date": null
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/BN-IR-Master/Letter-to-Shareholders/2025/letter-to-shareholders-march-final.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2025_march_update.pdf",
+    "sha256": "da3d6f8f80ee9b6cbf52274032e9fa72874d49ab3a20439646784a9537164448",
+    "scraper_version": "brookfield_web_v1.0"
+  },
+  {
+    "document_id": "doc_flatt_000059",
+    "author": "Bruce Flatt",
+    "title": "Q1 2026 Brookfield Letter to Shareholders",
+    "document_type": "shareholder_letter",
+    "publication_date": null,
+    "period": {
+      "start_date": "2026-01-01",
+      "end_date": "2026-03-31"
+    },
+    "source_url": "https://bn.brookfield.com/sites/brookfield-bn-v2/files/Brookfield-BN-IR-V2/2026/Q1/Q1-26-Brookfield-Letter-to-Shareholders-vF.pdf",
+    "local_path": "data/raw/investors/flatt/brookfield_letters/shareholder_letter_2026_q1.pdf",
+    "sha256": "54c0a73386dd978e1a93a1abb03edaffda9febfac8862066de8a31802f6eb441",
+    "scraper_version": "brookfield_web_v1.0"
+  }
+]
