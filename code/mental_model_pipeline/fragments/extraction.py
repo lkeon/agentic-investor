@@ -21,7 +21,9 @@ ENV_PATH = PROJECT_ROOT / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 
 MAX_FRAGMENTS_PER_DOCUMENT = 10
-MAX_OUTPUT_TOKENS = 128_000
+MAX_OUTPUT_TOKENS = 32_000
+MAX_OUTPUT_TOKEN_CAP = 128_000
+MAX_EXTRACTION_ATTEMPTS = 3
 EXTRACTION_MODEL = os.getenv(
     "FRAGMENT_EXTRACTION_MODEL",
     "gpt-5.6-terra",
@@ -125,10 +127,16 @@ DOCUMENT START
 DOCUMENT END
 """.strip()
 
-    try:
-        response = client.responses.parse(
-            model=EXTRACTION_MODEL,
-            input=[
+    last_validation_error: ValidationError | None = None
+
+    for attempt in range(MAX_EXTRACTION_ATTEMPTS):
+        output_tokens = min(
+            MAX_OUTPUT_TOKENS * (2**attempt),
+            MAX_OUTPUT_TOKEN_CAP,
+        )
+        request_kwargs: dict[str, object] = {
+            "model": EXTRACTION_MODEL,
+            "input": [
                 {
                     "role": "system",
                     "content": SYSTEM_PROMPT,
@@ -138,23 +146,37 @@ DOCUMENT END
                     "content": user_prompt,
                 },
             ],
-            text_format=MentalModelExtractionResult,
-            max_output_tokens=MAX_OUTPUT_TOKENS,
-        )
-    except ValidationError as exc:
-        invalid_json = any(
-            error["type"] == "json_invalid"
-            for error in exc.errors()
-        )
+            "text_format": MentalModelExtractionResult,
+            "max_output_tokens": output_tokens,
+        }
 
-        if invalid_json:
-            raise RuntimeError(
-                "The extraction model returned incomplete or invalid JSON. "
-                f"The response may have exceeded the {MAX_OUTPUT_TOKENS}-token "
-                "output limit. The document was not stored."
-            ) from exc
+        if attempt > 0:
+            request_kwargs["reasoning"] = {"effort": "low"}
 
-        raise
+        try:
+            response = client.responses.parse(**request_kwargs)
+            break
+        except ValidationError as exc:
+            invalid_json = any(
+                error["type"] == "json_invalid"
+                for error in exc.errors()
+            )
+
+            if not invalid_json:
+                raise
+
+            last_validation_error = exc
+            if attempt == MAX_EXTRACTION_ATTEMPTS - 1:
+                raise RuntimeError(
+                    "The extraction model returned incomplete or invalid JSON "
+                    f"after {MAX_EXTRACTION_ATTEMPTS} attempts. The final "
+                    f"output limit was {output_tokens} tokens. The document "
+                    "was not stored."
+                ) from exc
+    else:  # pragma: no cover - every loop path either returns or raises
+        raise RuntimeError(
+            "Extraction attempts ended without a response."
+        ) from last_validation_error
 
     parsed_result = response.output_parsed
 

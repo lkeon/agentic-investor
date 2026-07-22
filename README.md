@@ -179,10 +179,10 @@ are retried with capped exponential backoff, and processing continues after an
 individual document failure unless `--fail-fast` is supplied. Use
 `--retry-attempts NUMBER` to change the default of five attempts.
 
-Extraction responses are limited to 32,000 output tokens. The extraction prompt
-also asks for concise fields and short supporting quotations. Invalid or
-truncated structured output is reported without an automatic retry, and no
-database record is written for that document.
+Extraction starts with a 32,000-token output limit. If structured JSON is
+truncated, it retries twice with 64,000 and then 128,000 output tokens while
+using low reasoning effort. Other validation errors are reported without this
+fallback, and no database record is written for that document.
 
 After processing, committed manifest-backed fragments are read from the
 database in deterministic order and written atomically to

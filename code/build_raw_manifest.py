@@ -11,7 +11,7 @@ Local investor manifests are authoritative whitelists:
 - SHA-256 hashes are calculated for listed files.
 
 Expected placement:
-    project_root/code/build_raw_manifest_v2.py
+    project_root/code/build_raw_manifest.py
 
 Expected manifests:
     project_root/data/raw/investors/**/manifest.jsonl
