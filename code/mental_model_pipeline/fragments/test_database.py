@@ -1,3 +1,5 @@
+"""Smoke-test document insertion and retrieval."""
+
 from sqlalchemy import select
 
 from mental_model_pipeline.database.connection import SessionLocal

@@ -1,3 +1,5 @@
+"""Extract, embed, and store mental-model fragments from Markdown."""
+
 from __future__ import annotations
 
 import argparse

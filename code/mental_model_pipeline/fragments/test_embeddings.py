@@ -1,8 +1,10 @@
+"""Exercise fragment embedding generation."""
+
 from mental_model_pipeline.fragments.embeddings import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL,
     build_embedding_text,
-    create_fragment_embedding,
+    create_embedding,
 )
 from mental_model_pipeline.fragments.schemas import (
     AttributionType,
@@ -65,7 +67,7 @@ def main() -> None:
     print("---------------")
     print(embedding_text)
 
-    embedding = create_fragment_embedding(fragment)
+    embedding = create_embedding(embedding_text)
 
     print()
     print("Embedding model:", EMBEDDING_MODEL)

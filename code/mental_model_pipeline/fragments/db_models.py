@@ -1,4 +1,4 @@
-# code/mental_model_pipeline/fragments/db_models.py
+"""SQLAlchemy models for documents, fragments, and related entities."""
 
 from datetime import datetime
 from uuid import UUID, uuid4

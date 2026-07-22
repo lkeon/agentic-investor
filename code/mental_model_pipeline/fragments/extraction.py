@@ -1,3 +1,5 @@
+"""Extract and validate mental-model fragments from documents."""
+
 from __future__ import annotations
 
 import os
@@ -5,6 +7,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from pydantic import ValidationError
 
 from mental_model_pipeline.fragments.schemas import (
     MentalModelExtractionResult,
@@ -18,6 +21,7 @@ ENV_PATH = PROJECT_ROOT / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 
 MAX_FRAGMENTS_PER_DOCUMENT = 10
+MAX_OUTPUT_TOKENS = 128_000
 EXTRACTION_MODEL = os.getenv(
     "FRAGMENT_EXTRACTION_MODEL",
     "gpt-5.6-terra",
@@ -50,6 +54,17 @@ SYSTEM_PROMPT = """
     13. A quoted third-party idea must identify attributed_to.
     14. Return an empty fragments list when the text contains no useful investment
         mental model.
+    15. Keep every field concise.
+    16. Use the shortest exact source quote that adequately supports the fragment.
+    17. Include no more than three items in each list unless additional items are
+        essential to preserve the idea.
+    18. Avoid repeating the same explanation across proposition, mechanism,
+        conditions, and decision implications.
+    19. If attribution_type is third_party_quoted_by_investor,
+        attributed_to must contain the named person or organisation.
+    20. If no third party is explicitly named, use investor or unclear instead;
+        never return third_party_quoted_by_investor with attributed_to set to
+        null.
     """.strip()
 
 
@@ -110,20 +125,36 @@ DOCUMENT START
 DOCUMENT END
 """.strip()
 
-    response = client.responses.parse(
-        model=EXTRACTION_MODEL,
-        input=[
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT,
-            },
-            {
-                "role": "user",
-                "content": user_prompt,
-            },
-        ],
-        text_format=MentalModelExtractionResult,
-    )
+    try:
+        response = client.responses.parse(
+            model=EXTRACTION_MODEL,
+            input=[
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt,
+                },
+            ],
+            text_format=MentalModelExtractionResult,
+            max_output_tokens=MAX_OUTPUT_TOKENS,
+        )
+    except ValidationError as exc:
+        invalid_json = any(
+            error["type"] == "json_invalid"
+            for error in exc.errors()
+        )
+
+        if invalid_json:
+            raise RuntimeError(
+                "The extraction model returned incomplete or invalid JSON. "
+                f"The response may have exceeded the {MAX_OUTPUT_TOKENS}-token "
+                "output limit. The document was not stored."
+            ) from exc
+
+        raise
 
     parsed_result = response.output_parsed
 

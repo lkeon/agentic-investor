@@ -1,3 +1,5 @@
+"""Generate semantic embeddings for mental-model fragments."""
+
 import os
 from pathlib import Path
 

@@ -1,3 +1,5 @@
+"""Populate the database with sample fragment data."""
+
 from hashlib import sha256
 
 from sqlalchemy import select

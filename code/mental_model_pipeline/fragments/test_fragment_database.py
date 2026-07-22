@@ -1,3 +1,5 @@
+"""Integration-test fragment and related-entity persistence."""
+
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 

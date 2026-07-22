@@ -1,3 +1,5 @@
+"""Database operations for documents and mental-model fragments."""
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
