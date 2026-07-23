@@ -3,17 +3,17 @@
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from mental_model_pipeline.database.connection import SessionLocal
-from mental_model_pipeline.fragments.db_models import (
+from mental_model.database.connection import SessionLocal
+from mental_model.fragments.db_models import (
     DocumentDB,
     MentalModelFragmentDB,
     RelatedEntityDB,
 )
-from mental_model_pipeline.fragments.repository import (
+from mental_model.fragments.repository import (
     add_document,
     add_fragment,
 )
-from mental_model_pipeline.fragments.schemas import (
+from mental_model.fragments.schemas import (
     AttributionType,
     DecisionStage,
     EntityRelation,

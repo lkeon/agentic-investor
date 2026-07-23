@@ -1,8 +1,8 @@
-from mental_model_pipeline.database.base import Base
-from mental_model_pipeline.database.connection import engine
+from mental_model.database.base import Base
+from mental_model.database.connection import engine
 
 # Import the database models so SQLAlchemy registers the tables.
-from mental_model_pipeline.fragments import db_models  # noqa: F401
+from mental_model.fragments import db_models  # noqa: F401
 
 
 def create_tables() -> None:

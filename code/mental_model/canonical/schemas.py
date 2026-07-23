@@ -13,7 +13,7 @@ from pydantic import (
     model_validator,
 )
 
-from mental_model_pipeline.fragments.schemas import (
+from mental_model.fragments.schemas import (
     DecisionStage,
     FragmentKind,
 )

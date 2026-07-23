@@ -8,16 +8,16 @@ from uuid import UUID
 import numpy as np
 from sqlalchemy import select
 
-from mental_model_pipeline.canonical.db_models import (
+from mental_model.canonical.db_models import (
     CanonicalMentalModelDB,
     CanonicalModelEdgeDB,
 )
-from mental_model_pipeline.canonical.embeddings import create_embeddings
+from mental_model.canonical.embeddings import create_embeddings
 from crew.schemas import (
     InvestmentQuestion,
     RetrievedMentalModel,
 )
-from mental_model_pipeline.database.connection import SessionLocal
+from mental_model.database.connection import SessionLocal
 
 
 @dataclass(frozen=True)

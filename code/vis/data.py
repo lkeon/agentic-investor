@@ -6,11 +6,11 @@ from typing import Any
 
 from sqlalchemy import select
 
-from mental_model_pipeline.canonical.db_models import (
+from mental_model.canonical.db_models import (
     CanonicalMentalModelDB,
     CanonicalModelEdgeDB,
 )
-from mental_model_pipeline.database.connection import SessionLocal
+from mental_model.database.connection import SessionLocal
 
 
 def load_graph_data() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:

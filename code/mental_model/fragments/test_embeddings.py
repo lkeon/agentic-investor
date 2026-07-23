@@ -1,12 +1,12 @@
 """Exercise fragment embedding generation."""
 
-from mental_model_pipeline.fragments.embeddings import (
+from mental_model.fragments.embeddings import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL,
     build_embedding_text,
     create_embedding,
 )
-from mental_model_pipeline.fragments.schemas import (
+from mental_model.fragments.schemas import (
     AttributionType,
     DecisionStage,
     EvidenceStrength,

@@ -13,7 +13,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import UUID
 
-from mental_model_pipeline.fragments import ingest_markdown_all as batch_ingest
+from mental_model.fragments import ingest_markdown_all as batch_ingest
 
 
 class ManifestFixture:

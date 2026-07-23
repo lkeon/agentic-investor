@@ -14,29 +14,29 @@ from typing import Any
 import numpy as np
 from sqlalchemy import select
 
-from mental_model_pipeline.canonical.clustering import (
+from mental_model.canonical.clustering import (
     FragmentCluster,
     cluster_fragments,
 )
-from mental_model_pipeline.canonical.db_models import (
+from mental_model.canonical.db_models import (
     CanonicalMentalModelDB,
 )
-from mental_model_pipeline.canonical.export_jsonl import (
+from mental_model.canonical.export_jsonl import (
     DEFAULT_OUTPUT_PATH,
     export_canonical_jsonl,
 )
-from mental_model_pipeline.canonical.prompts import (
+from mental_model.canonical.prompts import (
     CONCEPT_FAMILY_SYSTEM_PROMPT,
     CONSTITUTION_SYSTEM_PROMPT,
     RELATIONSHIP_SYSTEM_PROMPT,
 )
-from mental_model_pipeline.canonical.providers import (
+from mental_model.canonical.providers import (
     OpenAIStructuredProvider,
 )
-from mental_model_pipeline.canonical.repository import (
+from mental_model.canonical.repository import (
     replace_hierarchy,
 )
-from mental_model_pipeline.canonical.schemas import (
+from mental_model.canonical.schemas import (
     ConceptFamilyBatchResult,
     ConstitutionAssignment,
     ConstitutionBatchResult,
@@ -47,7 +47,7 @@ from mental_model_pipeline.canonical.schemas import (
     RelationType,
     SYMMETRIC_RELATIONS,
 )
-from mental_model_pipeline.database.connection import SessionLocal
+from mental_model.database.connection import SessionLocal
 
 
 @dataclass(frozen=True)

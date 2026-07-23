@@ -6,10 +6,10 @@ import argparse
 
 from sqlalchemy import text
 
-from mental_model_pipeline.canonical import db_models as canonical_models  # noqa: F401
-from mental_model_pipeline.database.base import Base
-from mental_model_pipeline.database.connection import engine
-from mental_model_pipeline.fragments import db_models as fragment_models  # noqa: F401
+from mental_model.canonical import db_models as canonical_models  # noqa: F401
+from mental_model.database.base import Base
+from mental_model.database.connection import engine
+from mental_model.fragments import db_models as fragment_models  # noqa: F401
 
 
 LEGACY_AND_CURRENT_TABLES = (

@@ -439,25 +439,25 @@ def load_runtime() -> Runtime:
         RateLimitError,
     )
 
-    from mental_model_pipeline.database.connection import SessionLocal
-    from mental_model_pipeline.fragments.db_models import (
+    from mental_model.database.connection import SessionLocal
+    from mental_model.fragments.db_models import (
         DocumentDB,
         MentalModelFragmentDB,
         RelatedEntityDB,
     )
-    from mental_model_pipeline.fragments.embeddings import (
+    from mental_model.fragments.embeddings import (
         EMBEDDING_DIMENSIONS,
         EMBEDDING_MODEL,
         create_fragment_embeddings,
     )
-    from mental_model_pipeline.fragments.extraction import (
+    from mental_model.fragments.extraction import (
         EXTRACTION_MODEL,
         extract_fragments_from_document,
     )
-    from mental_model_pipeline.fragments.ingest_markdown import (
+    from mental_model.fragments.ingest_markdown import (
         generate_fragment_code,
     )
-    from mental_model_pipeline.fragments.repository import (
+    from mental_model.fragments.repository import (
         add_document,
         add_fragment,
     )

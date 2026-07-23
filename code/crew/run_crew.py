@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 
-from mental_model_pipeline.canonical.providers import OpenAIStructuredProvider
+from mental_model.canonical.providers import OpenAIStructuredProvider
 from crew.agents import run_round_one, run_round_two
 from crew.retrieval import retrieve_for_investors
 from crew.schemas import (

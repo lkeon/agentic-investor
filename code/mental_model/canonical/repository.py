@@ -7,11 +7,11 @@ from typing import Any
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
-from mental_model_pipeline.canonical.db_models import (
+from mental_model.canonical.db_models import (
     CanonicalMentalModelDB,
     CanonicalModelEdgeDB,
 )
-from mental_model_pipeline.canonical.schemas import CanonicalModelData
+from mental_model.canonical.schemas import CanonicalModelData
 
 
 def investor_has_canonicals(session: Session, investor_id: str) -> bool:

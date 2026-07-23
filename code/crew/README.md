@@ -17,7 +17,7 @@ It performs:
 7. JSON output without CIO synthesis or new database tables.
 
 The package still imports canonical models, embeddings and the database
-connection from `mental_model_pipeline`. Only the Crew orchestration code has
+connection from `mental_model`. Only the Crew orchestration code has
 moved to the top-level `crew` package.
 
 ## Folder structure
@@ -31,19 +31,10 @@ code/
 │   ├── agents.py
 │   ├── run_crew.py
 │   └── README.md
-└── mental_model_pipeline/
+└── mental_model/
     ├── canonical/
     ├── database/
     └── fragments/
-```
-
-## Remove the old package
-
-After copying the new folder, remove the previous location so that there is
-only one Crew implementation:
-
-```bash
-rm -rf code/mental_model_pipeline/crew
 ```
 
 ## Install
