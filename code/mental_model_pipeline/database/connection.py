@@ -9,12 +9,16 @@ from sqlalchemy.orm import sessionmaker
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ENV_PATH = PROJECT_ROOT / ".env"
 
-if not ENV_PATH.exists():
-    raise FileNotFoundError(f".env file not found: {ENV_PATH}")
+if ENV_PATH.exists():
+    load_dotenv(dotenv_path=ENV_PATH)
 
-load_dotenv(dotenv_path=ENV_PATH)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-DATABASE_URL = os.environ["DATABASE_URL"]
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL is required. Set it in .env locally or provide it "
+        "through the deployment environment."
+    )
 
 engine = create_engine(
     DATABASE_URL,

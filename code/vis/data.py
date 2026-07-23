@@ -1,7 +1,8 @@
-"""Load canonical mental-model nodes and graph edges from PostgreSQL."""
+"""Load safe MMC, MMF, and graph data from PostgreSQL."""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import select
@@ -11,10 +12,27 @@ from mental_model_pipeline.canonical.db_models import (
     CanonicalModelEdgeDB,
 )
 from mental_model_pipeline.database.connection import SessionLocal
+from mental_model_pipeline.fragments.db_models import MentalModelFragmentDB
+
+
+def _canonical_summary(
+    model: CanonicalMentalModelDB,
+) -> dict[str, Any]:
+    """Return safe generated fields for an MMC association."""
+
+    return {
+        "canonical_code": model.canonical_code,
+        "investor_id": model.investor_id,
+        "title": model.title,
+        "proposition": model.proposition,
+        "primary_domain": model.primary_domain,
+        "concept_family": model.concept_family,
+        "base_weight": float(model.base_weight),
+    }
 
 
 def load_graph_data() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Return embedded canonical models and edges as serialisable dictionaries."""
+    """Return embedded canonical models and stored graph edges."""
 
     with SessionLocal() as session:
         models = list(
@@ -90,3 +108,128 @@ def load_graph_data() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     ]
 
     return nodes, graph_edges
+
+
+def load_supporting_fragments(
+    fragment_codes: Sequence[str],
+) -> list[dict[str, Any]]:
+    """Load generated MMF fields without source quotations or references."""
+
+    ordered_codes = [code for code in fragment_codes if code]
+
+    if not ordered_codes:
+        return []
+
+    with SessionLocal() as session:
+        statement = select(
+            MentalModelFragmentDB.fragment_code,
+            MentalModelFragmentDB.investor_id,
+            MentalModelFragmentDB.kind,
+            MentalModelFragmentDB.title,
+            MentalModelFragmentDB.proposition,
+            MentalModelFragmentDB.mechanism,
+            MentalModelFragmentDB.conditions,
+            MentalModelFragmentDB.failure_conditions,
+            MentalModelFragmentDB.decision_implications,
+            MentalModelFragmentDB.decision_stages,
+            MentalModelFragmentDB.contextual_regimes,
+            MentalModelFragmentDB.evidence_strength,
+        ).where(
+            MentalModelFragmentDB.fragment_code.in_(ordered_codes)
+        )
+
+        rows = session.execute(statement).all()
+
+    fragments_by_code = {
+        row.fragment_code: {
+            "fragment_code": row.fragment_code,
+            "investor_id": row.investor_id,
+            "kind": row.kind,
+            "title": row.title,
+            "proposition": row.proposition,
+            "mechanism": list(row.mechanism or []),
+            "conditions": list(row.conditions or []),
+            "failure_conditions": list(row.failure_conditions or []),
+            "decision_implications": list(
+                row.decision_implications or []
+            ),
+            "decision_stages": list(row.decision_stages or []),
+            "contextual_regimes": list(row.contextual_regimes or []),
+            "evidence_strength": row.evidence_strength,
+        }
+        for row in rows
+    }
+
+    return [
+        fragments_by_code[code]
+        for code in ordered_codes
+        if code in fragments_by_code
+    ]
+
+
+def load_mmf_network_data() -> list[dict[str, Any]]:
+    """Return embedded MMFs and their associated canonical models."""
+
+    with SessionLocal() as session:
+        fragments = list(
+            session.scalars(
+                select(MentalModelFragmentDB)
+                .where(MentalModelFragmentDB.embedding.is_not(None))
+                .order_by(
+                    MentalModelFragmentDB.investor_id,
+                    MentalModelFragmentDB.fragment_code,
+                )
+            )
+        )
+
+        canonical_models = list(
+            session.scalars(
+                select(CanonicalMentalModelDB).order_by(
+                    CanonicalMentalModelDB.investor_id,
+                    CanonicalMentalModelDB.canonical_code,
+                )
+            )
+        )
+
+    associated_mmcs: dict[str, list[dict[str, Any]]] = {}
+
+    for model in canonical_models:
+        summary = _canonical_summary(model)
+
+        for fragment_code in model.supporting_fragment_codes or []:
+            associated_mmcs.setdefault(
+                fragment_code,
+                [],
+            ).append(summary)
+
+    return [
+        {
+            "fragment_code": fragment.fragment_code,
+            "investor_id": fragment.investor_id,
+            "kind": fragment.kind,
+            "title": fragment.title,
+            "proposition": fragment.proposition,
+            "mechanism": list(fragment.mechanism or []),
+            "conditions": list(fragment.conditions or []),
+            "failure_conditions": list(
+                fragment.failure_conditions or []
+            ),
+            "decision_implications": list(
+                fragment.decision_implications or []
+            ),
+            "decision_stages": list(fragment.decision_stages or []),
+            "contextual_regimes": list(
+                fragment.contextual_regimes or []
+            ),
+            "evidence_strength": fragment.evidence_strength,
+            "associated_mmcs": associated_mmcs.get(
+                fragment.fragment_code,
+                [],
+            ),
+            "embedding": [
+                float(value)
+                for value in fragment.embedding
+            ],
+        }
+        for fragment in fragments
+    ]

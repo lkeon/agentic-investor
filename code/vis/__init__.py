@@ -1,1 +1,1 @@
-"""Minimal visualisation tools for canonical mental models and crew output."""
+"""Mental-model visualisation package."""

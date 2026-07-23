@@ -7,11 +7,13 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from collections.abc import Sequence
 
+from mental_model_pipeline.fragments.constants import (
+    EMBEDDING_DIMENSIONS,
+)
 from mental_model_pipeline.fragments.schemas import MentalModelFragment
 
 
 EMBEDDING_MODEL = "text-embedding-3-large"
-EMBEDDING_DIMENSIONS = 1024
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ENV_PATH = PROJECT_ROOT / ".env"
