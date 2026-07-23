@@ -46,7 +46,7 @@ important, distinct, and generally applicable mental models.
 ```text
 code/
 ├── data_ingestion/          # acquisition, manifests and Markdown conversion
-├── mental_model/   # extraction, schemas, embeddings and database code
+├── mental_model_pipeline/   # extraction, schemas, embeddings and database code
 ├── crew/                    # investment-committee workflow
 ├── frontend/                # local Chainlit interface
 └── vis/                     # mental-model visualisation
@@ -86,7 +86,7 @@ extension enabled.
 Create the application tables:
 
 ```bash
-PYTHONPATH=code python -m mental_model.database.setup_database
+PYTHONPATH=code python -m mental_model_pipeline.database.setup_database
 ```
 
 ## Run the pipeline
@@ -114,14 +114,14 @@ are skipped; use `--force` to rebuild everything.
 ### 3. Validate extraction inputs without API calls
 
 ```bash
-PYTHONPATH=code python -m mental_model.fragments.ingest_markdown_all \
+PYTHONPATH=code python -m mental_model_pipeline.fragments.ingest_markdown_all \
   --dry-run --process-num 10
 ```
 
 For one file:
 
 ```bash
-PYTHONPATH=code python -m mental_model.fragments.ingest_markdown_all \
+PYTHONPATH=code python -m mental_model_pipeline.fragments.ingest_markdown_all \
   --dry-run --single-run path/to/document.md
 ```
 
@@ -129,15 +129,15 @@ PYTHONPATH=code python -m mental_model.fragments.ingest_markdown_all \
 
 ```bash
 # One document
-PYTHONPATH=code python -m mental_model.fragments.ingest_markdown_all \
+PYTHONPATH=code python -m mental_model_pipeline.fragments.ingest_markdown_all \
   --single-run path/to/document.md
 
 # Limited batch
-PYTHONPATH=code python -m mental_model.fragments.ingest_markdown_all \
+PYTHONPATH=code python -m mental_model_pipeline.fragments.ingest_markdown_all \
   --process-num 10
 
 # Complete manifest
-PYTHONPATH=code python -m mental_model.fragments.ingest_markdown_all
+PYTHONPATH=code python -m mental_model_pipeline.fragments.ingest_markdown_all
 ```
 
 New documents make paid extraction and embedding requests. Existing identical
@@ -172,8 +172,8 @@ entities, database IDs, embedding metadata and full embedding vectors.
 
 ```bash
 PYTHONPATH=code python -m unittest \
-  mental_model.fragments.test_extraction \
-  mental_model.fragments.test_ingest_markdown_all -v
+  mental_model_pipeline.fragments.test_extraction \
+  mental_model_pipeline.fragments.test_ingest_markdown_all -v
 ```
 
 Other `test_*.py` files under `fragments/` are manual smoke tests and may require

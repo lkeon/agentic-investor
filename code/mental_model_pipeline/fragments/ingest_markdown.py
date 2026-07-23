@@ -12,24 +12,24 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from mental_model.database.connection import SessionLocal
-from mental_model.fragments.db_models import (
+from mental_model_pipeline.database.connection import SessionLocal
+from mental_model_pipeline.fragments.db_models import (
     DocumentDB,
     MentalModelFragmentDB,
 )
-from mental_model.fragments.embeddings import (
+from mental_model_pipeline.fragments.embeddings import (
     EMBEDDING_MODEL,
     create_fragment_embeddings,
 )
-from mental_model.fragments.extraction import (
+from mental_model_pipeline.fragments.extraction import (
     EXTRACTION_MODEL,
     extract_fragments_from_document,
 )
-from mental_model.fragments.repository import (
+from mental_model_pipeline.fragments.repository import (
     add_document,
     add_fragment,
 )
-from mental_model.fragments.schemas import (
+from mental_model_pipeline.fragments.schemas import (
     MentalModelFragment,
 )
 

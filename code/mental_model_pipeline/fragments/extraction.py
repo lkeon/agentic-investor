@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import ValidationError
 
-from mental_model.fragments.schemas import (
+from mental_model_pipeline.fragments.schemas import (
     MentalModelExtractionResult,
     MentalModelFragment,
 )

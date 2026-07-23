@@ -7,7 +7,7 @@ from collections.abc import Sequence
 
 from openai import OpenAI
 
-from mental_model.fragments.embeddings import (
+from mental_model_pipeline.fragments.embeddings import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL,
 )

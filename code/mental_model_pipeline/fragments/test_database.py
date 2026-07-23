@@ -2,8 +2,8 @@
 
 from sqlalchemy import select
 
-from mental_model.database.connection import SessionLocal
-from mental_model.fragments.db_models import DocumentDB
+from mental_model_pipeline.database.connection import SessionLocal
+from mental_model_pipeline.fragments.db_models import DocumentDB
 
 
 def test_document_insert() -> None:

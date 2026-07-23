@@ -15,38 +15,38 @@ from typing import Any
 
 from sqlalchemy import select
 
-from mental_model.canonical.clustering import (
+from mental_model_pipeline.canonical.clustering import (
     FragmentCluster,
     cluster_coherence,
     cluster_fragments,
 )
-from mental_model.canonical.embeddings import (
+from mental_model_pipeline.canonical.embeddings import (
     CANONICAL_EMBEDDING_MODEL,
     create_canonical_embeddings,
 )
-from mental_model.canonical.export_jsonl import (
+from mental_model_pipeline.canonical.export_jsonl import (
     DEFAULT_OUTPUT_PATH,
     export_canonical_jsonl,
 )
-from mental_model.canonical.prompts import (
+from mental_model_pipeline.canonical.prompts import (
     CANONICAL_PROMPT_VERSION,
     CANONICAL_SYSTEM_PROMPT,
 )
-from mental_model.canonical.providers import (
+from mental_model_pipeline.canonical.providers import (
     OpenAIStructuredProvider,
 )
-from mental_model.canonical.repository import (
+from mental_model_pipeline.canonical.repository import (
     investor_has_canonicals,
     replace_investor_canonicals,
 )
-from mental_model.canonical.schemas import (
+from mental_model_pipeline.canonical.schemas import (
     CanonicalisationBatchResult,
     CanonicalModelData,
     CanonicalModelDraft,
 )
-from mental_model.canonical.scoring import calculate_scores
-from mental_model.database.connection import SessionLocal
-from mental_model.fragments.db_models import (
+from mental_model_pipeline.canonical.scoring import calculate_scores
+from mental_model_pipeline.database.connection import SessionLocal
+from mental_model_pipeline.fragments.db_models import (
     MentalModelFragmentDB,
 )
 

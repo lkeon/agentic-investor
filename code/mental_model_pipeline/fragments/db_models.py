@@ -15,7 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
-from mental_model.database.base import Base
+from mental_model_pipeline.database.base import Base
 
 
 class DocumentDB(Base):

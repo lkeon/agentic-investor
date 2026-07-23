@@ -8,8 +8,8 @@ from unittest.mock import Mock, patch
 
 from pydantic import ValidationError
 
-from mental_model.fragments import extraction
-from mental_model.fragments.schemas import (
+from mental_model_pipeline.fragments import extraction
+from mental_model_pipeline.fragments.schemas import (
     MentalModelExtractionResult,
 )
 

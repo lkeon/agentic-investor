@@ -4,17 +4,17 @@ from hashlib import sha256
 
 from sqlalchemy import select
 
-from mental_model.database.connection import SessionLocal
-from mental_model.fragments.db_models import (
+from mental_model_pipeline.database.connection import SessionLocal
+from mental_model_pipeline.fragments.db_models import (
     DocumentDB,
     MentalModelFragmentDB,
     RelatedEntityDB,
 )
-from mental_model.fragments.repository import (
+from mental_model_pipeline.fragments.repository import (
     add_document,
     add_fragment,
 )
-from mental_model.fragments.schemas import (
+from mental_model_pipeline.fragments.schemas import (
     AttributionType,
     DecisionStage,
     EntityRelation,

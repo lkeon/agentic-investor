@@ -188,7 +188,7 @@ For a new database or when no earlier canonical schema exists:
 
 ```bash
 PYTHONPATH=code python -m \
-mental_model.canonical.setup_database
+mental_model_pipeline.canonical.setup_database
 ```
 
 ## Pass 1 dry run
@@ -197,7 +197,7 @@ No database writes or OpenAI calls:
 
 ```bash
 PYTHONPATH=code python -m \
-mental_model.canonical.canonicalise_all \
+mental_model_pipeline.canonical.canonicalise_all \
 --investor-id buffett \
 --dry-run
 ```
@@ -209,7 +209,7 @@ paid API calls.
 
 ```bash
 PYTHONPATH=code python -m \
-mental_model.canonical.canonicalise_all \
+mental_model_pipeline.canonical.canonicalise_all \
 --investor-id buffett
 ```
 
@@ -218,7 +218,7 @@ transactionally with:
 
 ```bash
 PYTHONPATH=code python -m \
-mental_model.canonical.canonicalise_all \
+mental_model_pipeline.canonical.canonicalise_all \
 --investor-id buffett \
 --replace
 ```
@@ -232,7 +232,7 @@ For clearer failure boundaries during the MVP, process one investor per command.
 
 ```bash
 PYTHONPATH=code python -m \
-mental_model.canonical.canonicalise_all \
+mental_model_pipeline.canonical.canonicalise_all \
 --investor-id buffett \
 --model gpt-5.6-terra \
 --replace
@@ -248,7 +248,7 @@ This performs embedding-only pair selection and makes no OpenAI calls:
 
 ```bash
 PYTHONPATH=code python -m \
-mental_model.canonical.hierarchy_pass \
+mental_model_pipeline.canonical.hierarchy_pass \
 --dry-run
 ```
 
@@ -259,7 +259,7 @@ same-concept-family candidates before relationship classification.
 
 ```bash
 PYTHONPATH=code python -m \
-mental_model.canonical.hierarchy_pass
+mental_model_pipeline.canonical.hierarchy_pass
 ```
 
 Pass 2 replaces all existing graph edges and updates constitution fields in one

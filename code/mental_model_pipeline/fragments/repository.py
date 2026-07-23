@@ -3,12 +3,12 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from mental_model.fragments.db_models import (
+from mental_model_pipeline.fragments.db_models import (
     DocumentDB,
     MentalModelFragmentDB,
     RelatedEntityDB,
 )
-from mental_model.fragments.schemas import MentalModelFragment
+from mental_model_pipeline.fragments.schemas import MentalModelFragment
 
 
 def add_document(
