@@ -11,7 +11,7 @@ Local investor manifests are authoritative whitelists:
 - SHA-256 hashes are calculated for listed files.
 
 Expected placement:
-    project_root/code/build_raw_manifest.py
+    project_root/code/data_ingestion/build_raw_manifest.py
 
 Expected manifests:
     project_root/data/raw/investors/**/manifest.jsonl
@@ -89,7 +89,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def infer_project_root() -> Path:
-    return Path(__file__).resolve().parent.parent
+    return Path(__file__).resolve().parents[2]
 
 
 def discover_manifests(investors_dir: Path) -> list[Path]:

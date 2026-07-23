@@ -1,10 +1,18 @@
 docling
 PyMuPDF
 playwright
+
 pydantic>=2.0,<3.0
 SQLAlchemy>=2.0,<3.0
 psycopg[binary]>=3.3,<4.0
 pgvector>=0.4,<1.0
 python-dotenv>=1.0,<2.0
+
 openai>=2.0,<3.0
 numpy>=2.0,<3.0
+# crewai>=1.15,<2
+
+streamlit>=1.53,<2
+plotly>=6,<7
+scikit-learn>=1.5,<2
+pandas>=2,<3

@@ -1,0 +1,37 @@
+:root {
+  --investment-content-width: 880px;
+}
+
+body {
+  letter-spacing: -0.01em;
+}
+
+main {
+  max-width: var(--investment-content-width);
+  margin-inline: auto;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  letter-spacing: -0.025em;
+}
+
+.markdown-body p,
+.markdown-body li {
+  line-height: 1.65;
+}
+
+@media (max-width: 640px) {
+  main {
+    width: 100%;
+  }
+
+  .markdown-body h1 {
+    font-size: 1.55rem;
+  }
+
+  .markdown-body h2 {
+    font-size: 1.2rem;
+  }
+}

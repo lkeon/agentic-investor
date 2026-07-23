@@ -1,0 +1,10 @@
+[UI]
+name = "Investment Committee"
+description = "A mental-model-driven investment committee"
+default_theme = "light"
+layout = "default"
+cot = "full"
+confirm_new_chat = false
+alert_style = "modern"
+custom_css = "/public/stylesheet.css"
+github = ""

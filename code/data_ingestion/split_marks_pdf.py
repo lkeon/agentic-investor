@@ -24,7 +24,7 @@ Dependency:
     pip install pymupdf
 
 Example:
-    python split_marks_memos_pdf_manifest.py \
+    python code/data_ingestion/split_marks_pdf.py \
         /data/raw/investors/marks/memos/marks_complete_collection.pdf \
         /data/raw/investors/marks/memos/individual \
         --first-file-number 1 \
