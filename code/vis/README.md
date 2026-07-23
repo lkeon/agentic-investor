@@ -44,6 +44,76 @@ PYTHONPATH=code python -m streamlit run code/vis/mmc_app.py
 Open the address printed by Streamlit, normally
 `http://localhost:8501`.
 
+## Deploy
+
+On Streamlit Community Cloud, select:
+
+- branch: `streamline-deploy`;
+- entrypoint: `code/vis/streamlit_app.py`.
+
+The adjacent `code/vis/requirements.txt` contains the app dependencies. In the
+app's **Secrets** settings, add the pooled Neon connection string as a
+root-level secret:
+
+```toml
+DATABASE_URL = "postgresql+psycopg://user:password@endpoint-pooler.region.aws.neon.tech/database_name?sslmode=require"
+```
+
+Copy the pooled URL from Neon's **Connect** dialog and do not commit it. The
+application accepts Neon's standard `postgresql://` URL too and selects the
+installed Psycopg 3 driver automatically.
+
+## Neon database reminder
+
+Use the Neon database branch `production` and the `agentic_investor` database.
+The connection type depends on the task:
+
+- **Direct URL** — no `-pooler` in the hostname; use only for `psql`,
+  `pg_dump`, and `pg_restore`.
+- **Pooled URL** — `-pooler` in the hostname; use as `DATABASE_URL` in
+  Streamlit Community Cloud Secrets.
+
+To migrate the local database manually, first load the local URL from `.env`
+and convert its SQLAlchemy-specific scheme for PostgreSQL command-line tools:
+
+```bash
+set -a
+source .env
+set +a
+SOURCE_DATABASE_URL="${DATABASE_URL/postgresql+psycopg:/postgresql:}"
+
+read -r -s -p "Neon direct URL: " NEON_DIRECT_DATABASE_URL
+echo
+```
+
+Create the vector extension, dump the local database, and restore it once into
+an empty Neon database:
+
+```bash
+psql "$NEON_DIRECT_DATABASE_URL" \
+  -c 'CREATE EXTENSION IF NOT EXISTS vector;'
+
+pg_dump --format=custom --verbose \
+  --file=/tmp/agentic_investor.dump \
+  "$SOURCE_DATABASE_URL"
+
+pg_restore --verbose --no-owner --no-acl \
+  --dbname="$NEON_DIRECT_DATABASE_URL" \
+  /tmp/agentic_investor.dump
+```
+
+Do not rerun `pg_restore` against a database that already contains the tables.
+Verify the migration by comparing this query on the local and Neon URLs:
+
+```bash
+psql "$NEON_DIRECT_DATABASE_URL" -c \
+  "SELECT
+     (SELECT count(*) FROM documents) AS documents,
+     (SELECT count(*) FROM mental_model_fragments) AS fragments,
+     (SELECT count(*) FROM canonical_mental_models) AS mmcs,
+     (SELECT count(*) FROM canonical_model_edges) AS edges;"
+```
+
 Use left-drag to rotate, the mouse wheel to zoom, and middle-drag to move the
 plot. PCA positions represent semantic similarity only and are not investment
 scores.

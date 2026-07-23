@@ -20,9 +20,31 @@ if not DATABASE_URL:
         "through the deployment environment."
     )
 
+
+def _psycopg_database_url(database_url: str) -> str:
+    """Use the installed Psycopg 3 driver for standard Postgres URLs."""
+
+    if database_url.startswith("postgres://"):
+        return database_url.replace(
+            "postgres://",
+            "postgresql+psycopg://",
+            1,
+        )
+
+    if database_url.startswith("postgresql://"):
+        return database_url.replace(
+            "postgresql://",
+            "postgresql+psycopg://",
+            1,
+        )
+
+    return database_url
+
+
 engine = create_engine(
-    DATABASE_URL,
+    _psycopg_database_url(DATABASE_URL),
     echo=False,
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(
