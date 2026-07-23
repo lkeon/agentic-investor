@@ -1,11 +1,5 @@
 """Tests for visualisation click handling."""
 
-import runpy
-import sys
-from pathlib import Path
-from types import ModuleType
-from unittest.mock import patch
-
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -160,22 +154,3 @@ def test_plot_uses_native_webgl_resolution() -> None:
     """Avoid Plotly's expensive two-times WebGL framebuffer."""
 
     assert mmc_app.PLOTLY_GL_PIXEL_RATIO == 1
-
-
-def test_deployment_entrypoint_configures_source_imports() -> None:
-    """Run the app entry point without relying on PYTHONPATH."""
-
-    entrypoint = Path(__file__).with_name("streamlit_app.py")
-    namespace = runpy.run_path(
-        str(entrypoint),
-        run_name="deployment_entrypoint_test",
-    )
-    rendered: list[bool] = []
-    fake_app = ModuleType("vis.mmc_app")
-    fake_app.main = lambda: rendered.append(True)
-
-    with patch.dict(sys.modules, {"vis.mmc_app": fake_app}):
-        namespace["main"]()
-
-    assert str(namespace["CODE_ROOT"]) in sys.path
-    assert rendered == [True]

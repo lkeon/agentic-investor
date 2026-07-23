@@ -226,14 +226,11 @@ references are excluded.
 Run it from the repository root:
 
 ```bash
-python -m streamlit run code/vis/streamlit_app.py
+PYTHONPATH=code python -m streamlit run code/vis/mmc_app.py
 ```
 
 The visualisation's dependencies are listed separately in
-[`code/vis/requirements.txt`](code/vis/requirements.txt), so deploying it does
-not install the pipeline-only dependencies. For Community Cloud deployment,
-select the `streamlit-deploy` branch and `code/vis/streamlit_app.py` as the
-entrypoint, then set `DATABASE_URL` through the app's Secrets settings.
+[`code/vis/requirements.txt`](code/vis/requirements.txt).
 
 ## Tests
 

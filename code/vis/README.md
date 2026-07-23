@@ -38,7 +38,7 @@ PostgreSQL must be running and `.env` must contain a valid `DATABASE_URL`.
 ## Run
 
 ```bash
-python -m streamlit run code/vis/streamlit_app.py
+PYTHONPATH=code python -m streamlit run code/vis/mmc_app.py
 ```
 
 Open the address printed by Streamlit, normally
@@ -47,22 +47,6 @@ Open the address printed by Streamlit, normally
 Use left-drag to rotate, the mouse wheel to zoom, and middle-drag to move the
 plot. PCA positions represent semantic similarity only and are not investment
 scores.
-
-
-## Community Cloud deployment
-
-Deploy the `streamlit-deploy` branch with
-`code/vis/streamlit_app.py` as the entrypoint. Community Cloud will use the
-nearby `code/vis/requirements.txt`, avoiding the pipeline-only dependencies.
-
-In the app's **Secrets** settings, provide:
-
-```toml
-DATABASE_URL = "postgresql+psycopg://user:password@host:5432/database_name"
-```
-
-Do not commit the database URL or any `.streamlit/secrets.toml` file.
-
 
 ## Plot controls
 
