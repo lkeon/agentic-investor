@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import html
+import json
 import textwrap
+from collections.abc import MutableMapping
 from typing import Any
 
 import numpy as np
@@ -326,6 +328,64 @@ def _render_clickable_plot(
         return plotly_events(**arguments)
 
 
+def _nearest_code_for_coordinates(
+    clicked: np.ndarray,
+    frame: pd.DataFrame,
+    *,
+    code_column: str,
+) -> str | None:
+    """Return the displayed code at an exact 3D graph coordinate."""
+
+    coordinates = frame[["x", "y", "z"]].to_numpy(
+        dtype=np.float64
+    )
+    distances = np.linalg.norm(
+        coordinates - clicked,
+        axis=1,
+    )
+    nearest_position = int(np.argmin(distances))
+
+    full_scale = max(
+        float(np.ptp(coordinates[:, 0])),
+        float(np.ptp(coordinates[:, 1])),
+        float(np.ptp(coordinates[:, 2])),
+        0.01,
+    )
+
+    if float(distances[nearest_position]) > full_scale * 1e-5:
+        return None
+
+    return str(
+        frame.iloc[nearest_position][code_column]
+    )
+
+
+def _consume_click_events(
+    events: list[dict[str, Any]],
+    *,
+    state: MutableMapping[str, Any],
+    state_key: str,
+) -> list[dict[str, Any]]:
+    """Return a click once, ignoring the component's replay on rerun."""
+
+    if not events:
+        return []
+
+    event = events[-1]
+    fingerprint = json.dumps(
+        event,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+
+    if state.get(state_key) == fingerprint:
+        return []
+
+    state[state_key] = fingerprint
+    return [event]
+
+
 def _clicked_code(
     events: list[dict[str, Any]],
     figure: go.Figure,
@@ -337,8 +397,9 @@ def _clicked_code(
     Resolve a Plotly click to an MMC or MMF code.
 
     Prefer Plotly's trace and point indices so the code is read directly from
-    the clicked trace's customdata. Coordinate matching remains as a fallback
-    for component versions that omit those indices.
+    the clicked trace's customdata. A click on a graph-link endpoint is mapped
+    through the trace coordinates; component event coordinates are the final
+    fallback for versions that omit point indices.
     """
 
     if not events or frame.empty:
@@ -378,6 +439,24 @@ def _clicked_code(
 
             if code in visible_codes:
                 return code
+
+        # Graph links have no customdata. Their endpoint coordinates are still
+        # exact node coordinates, so resolve an edge-endpoint click to its MMC.
+        trace_clicked = np.asarray(
+            [
+                float(trace.x[point_number]),
+                float(trace.y[point_number]),
+                float(trace.z[point_number]),
+            ],
+            dtype=np.float64,
+        )
+        code = _nearest_code_for_coordinates(
+            trace_clicked,
+            frame,
+            code_column=code_column,
+        )
+        if code is not None:
+            return code
     except (
         IndexError,
         KeyError,
@@ -399,27 +478,10 @@ def _clicked_code(
     except (KeyError, TypeError, ValueError):
         return None
 
-    coordinates = frame[["x", "y", "z"]].to_numpy(
-        dtype=np.float64
-    )
-    distances = np.linalg.norm(
-        coordinates - clicked,
-        axis=1,
-    )
-    nearest_position = int(np.argmin(distances))
-
-    full_scale = max(
-        float(np.ptp(coordinates[:, 0])),
-        float(np.ptp(coordinates[:, 1])),
-        float(np.ptp(coordinates[:, 2])),
-        0.01,
-    )
-
-    if float(distances[nearest_position]) > full_scale * 1e-5:
-        return None
-
-    return str(
-        frame.iloc[nearest_position][code_column]
+    return _nearest_code_for_coordinates(
+        clicked,
+        frame,
+        code_column=code_column,
     )
 
 
@@ -1893,6 +1955,11 @@ def main() -> None:
             figure,
             key=f"mmc_click_graph_{view_revision}",
         )
+        events = _consume_click_events(
+            events,
+            state=st.session_state,
+            state_key=f"mmc_consumed_click_{view_revision}",
+        )
         clicked = _clicked_code(
             events,
             figure,
@@ -2003,6 +2070,11 @@ def main() -> None:
     events = _render_clickable_plot(
         figure,
         key=f"mmf_click_graph_{view_revision}",
+    )
+    events = _consume_click_events(
+        events,
+        state=st.session_state,
+        state_key=f"mmf_consumed_click_{view_revision}",
     )
     clicked = _clicked_code(
         events,
