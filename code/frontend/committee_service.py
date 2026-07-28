@@ -89,9 +89,57 @@ def stop_active_committee() -> bool:
     return True
 
 
-def discover_investors() -> list[str]:
-    """Discover investor IDs from the local canonical export."""
+def _discover_investors_from_database() -> set[str]:
+    """Return investors with retrievable canonical models in PostgreSQL."""
 
+    if str(CODE_ROOT) not in sys.path:
+        sys.path.insert(0, str(CODE_ROOT))
+    try:
+        from sqlalchemy import select
+        from sqlalchemy.exc import SQLAlchemyError
+
+        from mental_model_pipeline.canonical.db_models import (
+            CanonicalMentalModelDB,
+        )
+        from mental_model_pipeline.canonical.embeddings import (
+            accepted_embedding_identities,
+        )
+        from mental_model_pipeline.database.connection import SessionLocal
+    except (ImportError, RuntimeError):
+        # Local rendering without configured infrastructure can still use the
+        # canonical export or the minimal fallback below.
+        return set()
+
+    try:
+        with SessionLocal() as session:
+            return {
+                investor_id.strip()
+                for investor_id in session.scalars(
+                    select(CanonicalMentalModelDB.investor_id)
+                    .where(
+                        CanonicalMentalModelDB.embedding.is_not(None),
+                        CanonicalMentalModelDB.embedding_model.in_(
+                            accepted_embedding_identities()
+                        ),
+                    )
+                    .distinct()
+                    .order_by(CanonicalMentalModelDB.investor_id)
+                )
+                if investor_id and investor_id.strip()
+            }
+    except SQLAlchemyError:
+        return set()
+
+
+def discover_investors() -> list[str]:
+    """Discover retrievable investor IDs, with local startup fallbacks."""
+
+    investors = _discover_investors_from_database()
+    if investors:
+        return sorted(investors)
+
+    # The export is useful for local UI rendering before PostgreSQL starts,
+    # but it is intentionally excluded from deployed source control.
     export_path = (
         PROJECT_ROOT
         / "data"
@@ -99,7 +147,6 @@ def discover_investors() -> list[str]:
         / "canonical"
         / "canonical_mental_models.jsonl"
     )
-    investors: set[str] = set()
     if export_path.is_file():
         with export_path.open(encoding="utf-8") as stream:
             for line in stream:
