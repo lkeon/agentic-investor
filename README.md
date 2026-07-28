@@ -92,8 +92,7 @@ Start The Diligence Room interface:
 
 ```bash
 source .venvinv/bin/activate
-cd code/frontend
-python -m streamlit run app.py
+python -m streamlit run code/frontend/app.py
 ```
 
 Or run the committee directly:
@@ -121,3 +120,31 @@ The committee contract tests are local and make no paid model calls:
 ```bash
 PYTHONPATH=code python -m unittest crew.test_crew -v
 ```
+
+## Deploy The Diligence Room
+
+The `diligence-room-deploy` branch is prepared for Streamlit Community Cloud.
+Create the app with:
+
+- entrypoint: `code/frontend/app.py`;
+- Python: 3.13;
+- dependency file: `code/frontend/requirements.txt`.
+
+Copy [`.streamlit/secrets.toml.example`](.streamlit/secrets.toml.example) into
+the deployment's **Advanced settings → Secrets** field and replace every
+placeholder. The three sensitive values are:
+
+- `DATABASE_URL`: an externally reachable PostgreSQL database with `pgvector`
+  enabled and the canonical mental-model tables populated;
+- `OPENAI_API_KEY`: used by the fixed OpenAI embedding and retrieval layer;
+- `OPENROUTER_API_KEY`: used by the reasoning stages.
+
+The deployment template routes all reasoning stages through
+`openrouter/deepseek/deepseek-v4-flash`. OpenAI remains available for embeddings
+and for any reasoning stage later changed to an `openai/<model>` value.
+
+Streamlit Community Cloud cannot access or start a PostgreSQL service on the
+local machine. The populated mental-model database must therefore be migrated
+to a managed PostgreSQL/pgvector service before the deployed committee can run.
+Hosted runs use isolated temporary result files and never load another browser
+session's latest local result.

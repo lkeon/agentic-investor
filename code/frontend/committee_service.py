@@ -25,6 +25,16 @@ _PROCESS_LOCK = Lock()
 _ACTIVE_PROCESS: subprocess.Popen[str] | None = None
 _STOPPED_PROCESS_IDS: set[int] = set()
 MAX_TECHNICAL_LOG_LINES = 8000
+STREAMLIT_CLOUD_MODE = "streamlit_cloud"
+
+
+def _is_streamlit_cloud() -> bool:
+    """Return whether shared cloud-session safeguards should be enabled."""
+
+    return (
+        os.getenv("DILIGENCE_DEPLOYMENT", "").strip().lower()
+        == STREAMLIT_CLOUD_MODE
+    )
 
 
 @dataclass(frozen=True)
@@ -105,6 +115,10 @@ def discover_investors() -> list[str]:
 def load_latest_result() -> dict[str, object] | None:
     """Load and validate the most recent completed committee artifact."""
 
+    # A deployed Streamlit process is shared by multiple browser sessions.
+    # Never expose a previous session's locally persisted committee result.
+    if _is_streamlit_cloud():
+        return None
     if not DEFAULT_OUTPUT_PATH.is_file():
         return None
     try:
@@ -245,6 +259,19 @@ def run_committee(
     if not investors:
         raise ValueError("Select at least one investor perspective.")
 
+    output_path = DEFAULT_OUTPUT_PATH
+    ephemeral_output = False
+    if _is_streamlit_cloud():
+        # Each hosted run gets an isolated result artifact. The validated
+        # result is returned to that session and the temporary file is removed.
+        with NamedTemporaryFile(
+            suffix=".json",
+            prefix="diligence-result-",
+            delete=False,
+        ) as output_file:
+            output_path = Path(output_file.name)
+        ephemeral_output = True
+
     command = [
         sys.executable,
         "-m",
@@ -255,7 +282,7 @@ def run_committee(
         "--neighbours",
         str(neighbours),
         "--output-path",
-        str(DEFAULT_OUTPUT_PATH),
+        str(output_path),
     ]
     for investor_id in investors:
         command.extend(["--investor", investor_id])
@@ -344,7 +371,7 @@ def run_committee(
                 f"Committee execution failed: {detail}",
                 logs,
             )
-        return _load_validated_result(DEFAULT_OUTPUT_PATH)
+        return _load_validated_result(output_path)
     finally:
         if process is not None:
             if process.poll() is None:
@@ -355,6 +382,8 @@ def run_committee(
                 _STOPPED_PROCESS_IDS.discard(process.pid)
         if context_path is not None:
             context_path.unlink(missing_ok=True)
+        if ephemeral_output:
+            output_path.unlink(missing_ok=True)
 
 
 def _load_validated_result(path: Path) -> dict[str, object]:

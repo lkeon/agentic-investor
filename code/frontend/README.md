@@ -52,8 +52,7 @@ From the repository root:
 
 ```bash
 source .venvinv/bin/activate
-cd code/frontend
-python -m streamlit run app.py
+python -m streamlit run code/frontend/app.py
 ```
 
 Open the local URL printed by Streamlit, normally
@@ -73,6 +72,56 @@ data/processed/crew/committee_result.json
 - permission to run `systemctl start postgresql` when the configured database
   is unavailable.
 
+## Streamlit Community Cloud deployment
+
+Deploy this branch with:
+
+```text
+Entrypoint: code/frontend/app.py
+Python:     3.13
+```
+
+Community Cloud runs from the repository root, so the deployment theme is in
+the root `.streamlit/config.toml`. It finds the deployment-specific, reduced
+dependency set beside the entrypoint in `code/frontend/requirements.txt`.
+
+In **Advanced settings → Secrets**, paste the contents of the root
+`.streamlit/secrets.toml.example` and replace the placeholders. Keep all
+entries at the TOML root level so Streamlit exposes them as environment
+variables to both the frontend process and its committee subprocess.
+
+Required sensitive values:
+
+- `DATABASE_URL` — a remotely reachable PostgreSQL/pgvector connection string
+  containing the populated canonical mental-model database. Use the SQLAlchemy
+  `postgresql+psycopg://` scheme and the managed provider's required TLS
+  parameters, commonly `?sslmode=require`.
+- `OPENAI_API_KEY` — required for the OpenAI embedding provider used during
+  mental-model retrieval even when no reasoning stage uses OpenAI.
+- `OPENROUTER_API_KEY` — required for the currently configured DeepSeek
+  reasoning model.
+
+The non-secret deployment settings route every reasoning stage through:
+
+```toml
+DEFAULT_REASONING_MODEL = "openrouter/deepseek/deepseek-v4-flash"
+```
+
+Individual stage variables remain optional. Add `QUESTION_MODEL`,
+`RESEARCH_MODEL`, `BRIDGE_MODEL`, `INVESTOR_MODEL`, or `CIO_MODEL` only when a
+stage should override the default. A value such as
+`openai/gpt-5-nano-2025-08-07` routes that stage directly to OpenAI; a value
+beginning `openrouter/` routes it through OpenRouter.
+
+`DILIGENCE_DEPLOYMENT = "streamlit_cloud"` enables hosted-session safeguards:
+completed artifacts use per-run temporary files and the app does not load a
+result created by a different browser session.
+
+The deployment cannot run `systemctl` or connect to PostgreSQL on your local
+computer. Populate the managed database before deployment; the application
+will report an actionable connection error if that external service is
+unavailable.
+
 ## Validation
 
 From the repository root, run the committee contracts:
@@ -84,11 +133,10 @@ PYTHONPATH=code python -m unittest crew.test_crew -v
 Render the frontend without starting a paid committee run:
 
 ```bash
-cd code/frontend
 python - <<'PY'
 from streamlit.testing.v1 import AppTest
 
-app = AppTest.from_file("app.py")
+app = AppTest.from_file("code/frontend/app.py")
 app.run()
 assert not app.exception
 print("Frontend render check passed")

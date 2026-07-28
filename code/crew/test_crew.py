@@ -398,6 +398,23 @@ class DatabaseStartupTests(unittest.TestCase):
             text=True,
         )
 
+    @patch("crew.run_crew._database_is_local", return_value=False)
+    @patch("crew.run_crew._database_is_ready", return_value=False)
+    @patch("crew.run_crew.subprocess.run")
+    def test_external_database_failure_does_not_run_systemctl(
+        self,
+        run: object,
+        _: object,
+        __: object,
+    ) -> None:
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "external PostgreSQL database is unavailable",
+        ):
+            _ensure_database_running()
+
+        run.assert_not_called()
+
 
 class BridgeTests(unittest.TestCase):
     def test_macro_research_rekeys_cross_view_claim_collision(self) -> None:

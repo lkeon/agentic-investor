@@ -81,11 +81,24 @@ def _database_is_ready() -> bool:
     return True
 
 
+def _database_is_local() -> bool:
+    """Return whether the configured database can be managed by systemd here."""
+
+    return engine.url.host in {None, "", "localhost", "127.0.0.1", "::1"}
+
+
 def _ensure_database_running() -> None:
     """Start the local PostgreSQL service only when its configured DB is down."""
 
     if _database_is_ready():
         return
+
+    if not _database_is_local():
+        raise RuntimeError(
+            "The configured external PostgreSQL database is unavailable. "
+            "A hosted deployment cannot start that service locally; verify "
+            "DATABASE_URL, network access, TLS settings, and provider status."
+        )
 
     print("PostgreSQL is unavailable; starting postgresql service...", flush=True)
     # The MVP uses the host's systemd-managed PostgreSQL service. Capture its
