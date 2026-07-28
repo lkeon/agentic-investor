@@ -1,7 +1,10 @@
 # Agentic Investor
 
-Agentic Investor is a value-investing decision-support system built around
-explicit mental models. It helps answer a practical question:
+## The Diligence Room
+
+The Diligence Room is the product experience built in this `agentic-investor`
+repository: a value-investing decision-support system built around explicit
+mental models. It helps answer a practical question:
 
 > Given the evidence available today, how would several long-term investors
 > frame this investment, and what decision follows?
@@ -85,7 +88,7 @@ canonical mental-model database; create its tables with:
 PYTHONPATH=code python -m mental_model_pipeline.database.setup_database
 ```
 
-Start the product interface:
+Start The Diligence Room interface:
 
 ```bash
 source .venvinv/bin/activate
