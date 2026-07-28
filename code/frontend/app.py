@@ -64,7 +64,16 @@ def _inject_styles() -> None:
 
 
 def _safe(value: object) -> str:
-    return escape(str(value or ""))
+    # Streamlit still processes Markdown maths inside unsafe HTML blocks.
+    # Encode currency markers as HTML entities so financial prose such as
+    # "US$176B" remains literal text rather than being rendered as LaTex.
+    return escape(str(value or "")).replace("$", "&#36;")
+
+
+def _literal_markdown_label(value: object) -> str:
+    """Escape a Streamlit Markdown label without allowing inline maths."""
+
+    return escape(str(value or "")).replace("$", r"\$")
 
 
 def _render_customer_progress(
@@ -745,7 +754,9 @@ def _render_investor(
     st.markdown("#### Reasoning")
     for number, inference in enumerate(output.get("mental_model_inferences", []), start=1):
         applicability = display_name(inference.get("applicability", "uncertain"))
-        with st.expander(f"{number}. {inference['conclusion']}"):
+        with st.expander(
+            f"{number}. {_literal_markdown_label(inference['conclusion'])}"
+        ):
             st.caption(f"Applicability · {applicability}")
             model_names = [
                 catalogue.get(code, {}).get("title", code)
@@ -1049,12 +1060,12 @@ def _render_reasoning_chain(result: dict[str, object]) -> None:
         for output in investor_outputs.values()
     )
     steps = (
-        ("01", len(_claim_catalogue(result)), "Evidence claims"),
-        ("02", len(bridge_ids), "Analytical bridges"),
-        ("03", len(retrieved_codes), "Retrieved mental models"),
-        ("04", len(applied_codes), "Applied mental models"),
-        ("05", inference_count, "Investor inferences"),
-        ("06", 1 if result.get("cio") else 0, "CIO decision"),
+        ("1", len(_claim_catalogue(result)), "Evidence claims"),
+        ("2", len(bridge_ids), "Analytical bridges"),
+        ("3", len(retrieved_codes), "Retrieved mental models"),
+        ("4", len(applied_codes), "Applied mental models"),
+        ("5", inference_count, "Investor inferences"),
+        ("6", 1 if result.get("cio") else 0, "CIO decision"),
     )
     step_html = "".join(
         '<div class="reasoning-flow-step">'

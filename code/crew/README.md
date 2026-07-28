@@ -8,7 +8,7 @@ independent, mental-model-based investor views and one structured CIO decision.
 1. Normalise the question and thesis-led holding policy.
 2. Build an evidence-only company `MicroView`.
 3. Build a company-relevant `MacroView`.
-4. Create 1–8 focused `MentalModelBridge` searches.
+4. Create 1–6 focused `MentalModelBridge` searches.
 5. Retrieve canonical models separately for each selected investor.
 6. Produce one independent `InvestorReasoningOutput` per investor with a
    self-contained investment view of at least 80 words and 3–6 distinct,
@@ -101,6 +101,7 @@ Reasoning models use CrewAI provider-qualified names and fall back to the
 global default:
 
 ```dotenv
+DEFAULT_REASONING_PROVIDER=openai
 DEFAULT_REASONING_MODEL=openai/gpt-5-nano-2025-08-07
 QUESTION_MODEL=openai/gpt-5-nano-2025-08-07
 RESEARCH_MODEL=openai/gpt-5-nano-2025-08-07
@@ -108,6 +109,32 @@ BRIDGE_MODEL=openai/gpt-5-nano-2025-08-07
 INVESTOR_MODEL=openai/gpt-5-nano-2025-08-07
 CIO_MODEL=openai/gpt-5-nano-2025-08-07
 ```
+
+Direct provider names continue to work. To route one or every reasoning stage
+through OpenRouter, set its model to
+`openrouter/<OpenRouter provider>/<model>`:
+
+```dotenv
+OPENROUTER_API_KEY=your-openrouter-api-key
+OPENROUTER_API_BASE=https://openrouter.ai/api/v1
+OR_SITE_URL=
+OR_APP_NAME="The Diligence Room"
+
+DEFAULT_REASONING_MODEL=openrouter/anthropic/your-model
+QUESTION_MODEL=openrouter/openai/your-model
+RESEARCH_MODEL=openrouter/google/your-model
+BRIDGE_MODEL=openrouter/anthropic/your-model
+INVESTOR_MODEL=openrouter/anthropic/your-model
+CIO_MODEL=openrouter/openai/your-model
+```
+
+Only stages carrying the `openrouter/` prefix use the OpenRouter key and
+endpoint. Other stages may remain on direct providers in the same run. The
+adapter uses CrewAI's native OpenAI-compatible client, preserves the complete
+OpenRouter model slug, and optionally sends `OR_SITE_URL` and `OR_APP_NAME` as
+OpenRouter attribution headers. It also requires OpenRouter to select a route
+that supports the request parameters. Because every reasoning stage produces
+a Pydantic result, choose OpenRouter models that support structured outputs.
 
 Command-line overrides:
 
@@ -127,13 +154,14 @@ EMBEDDING_MODEL=text-embedding-3-large
 EMBEDDING_DIMENSIONS=1024
 ```
 
-Changing embedding identity requires compatible canonical vectors. Changing
-dimensions also requires a database migration because the current pgvector
-column uses 1,024 dimensions.
+OpenRouter reasoning settings do not change embeddings. Changing embedding
+identity requires compatible canonical vectors. Changing dimensions also
+requires a database migration because the current pgvector column uses 1,024
+dimensions.
 
 ## Tests
 
-The contract tests make no paid calls and do not import the CrewAI runtime:
+The contract tests make no paid model calls:
 
 ```bash
 PYTHONPATH=code python -m unittest crew.test_crew -v

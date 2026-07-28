@@ -387,6 +387,42 @@ class MentalModelBridgeList(BaseModel):
         return self
 
 
+class MentalModelBridgeDraft(BaseModel):
+    """Lean model-facing bridge output, hydrated into a full bridge locally."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    bridge_id: str = Field(min_length=1, max_length=120)
+    analytical_question: str = Field(min_length=10, max_length=1000)
+    search_query: str = Field(min_length=10, max_length=1400)
+    decision_stage: str = Field(min_length=2, max_length=100)
+    domains: list[str] = Field(min_length=1, max_length=4)
+    importance: float = Field(ge=0.0, le=1.0)
+    retrieved_claim_ids: list[str] = Field(min_length=1, max_length=6)
+    missing_information: list[str] = Field(default_factory=list, max_length=8)
+
+    @model_validator(mode="after")
+    def validate_claim_ids(self) -> MentalModelBridgeDraft:
+        if len(self.retrieved_claim_ids) != len(set(self.retrieved_claim_ids)):
+            raise ValueError("Bridge evidence claim IDs must be unique.")
+        return self
+
+
+class MentalModelBridgeDraftList(BaseModel):
+    """Compact bridge-selection response returned by the bridge-builder model."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    bridges: list[MentalModelBridgeDraft] = Field(min_length=1, max_length=6)
+
+    @model_validator(mode="after")
+    def validate_bridges(self) -> MentalModelBridgeDraftList:
+        bridge_ids = [bridge.bridge_id for bridge in self.bridges]
+        if len(bridge_ids) != len(set(bridge_ids)):
+            raise ValueError("Mental-model bridge IDs must be unique.")
+        return self
+
+
 class OneInvestorReasoningInput(BaseModel):
     """Complete evidence and mental-model context for one investor."""
 

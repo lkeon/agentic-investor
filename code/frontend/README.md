@@ -41,6 +41,11 @@ period: the product supports continued ownership only while the core business
 thesis remains valid. Macro is shown as a secondary condition and matters only
 when it has a direct, material effect on that thesis.
 
+Reasoning stages may use direct providers or OpenRouter independently through
+the root `.env`; OpenAI embedding configuration remains separate. See
+[`code/crew/README.md`](../crew/README.md#model-configuration) for the model
+syntax and required OpenRouter variables.
+
 ## Run
 
 From the repository root:

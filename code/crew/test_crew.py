@@ -21,7 +21,7 @@ from crew.agents import (
     run_cio_synthesis,
     run_investor_reasoning,
 )
-from crew.config import qualify_reasoning_model
+from crew.config import create_reasoning_llm, qualify_reasoning_model
 from crew.retrieval import _build_adjacency, _normalise
 from crew.run_crew import _ensure_database_running
 from crew.schemas import (
@@ -35,6 +35,8 @@ from crew.schemas import (
     MacroView,
     MentalModelCandidate,
     MentalModelBridge,
+    MentalModelBridgeDraft,
+    MentalModelBridgeDraftList,
     MentalModelBridgeList,
     MicroView,
     ResearchSource,
@@ -284,6 +286,59 @@ class SchemaTests(unittest.TestCase):
             "openai/example",
         )
 
+    def test_direct_reasoning_model_remains_a_provider_string(self) -> None:
+        self.assertEqual(
+            create_reasoning_llm("openai/example"),
+            "openai/example",
+        )
+
+    def test_openrouter_model_builds_openai_compatible_connection(self) -> None:
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "OPENROUTER_API_KEY": "test-openrouter-key",
+                    "OPENROUTER_API_BASE": "https://router.example/v1/",
+                    "OR_SITE_URL": "https://diligence.example",
+                    "OR_APP_NAME": "The Diligence Room",
+                },
+            ),
+            patch("crewai.LLM") as llm,
+        ):
+            configured = create_reasoning_llm(
+                "openrouter/anthropic/example"
+            )
+
+        self.assertIs(configured, llm.return_value)
+        llm.assert_called_once_with(
+            model="anthropic/example",
+            provider="openai",
+            api_key="test-openrouter-key",
+            base_url="https://router.example/v1",
+            default_headers={
+                "HTTP-Referer": "https://diligence.example",
+                "X-OpenRouter-Title": "The Diligence Room",
+            },
+            additional_params={
+                "extra_body": {
+                    "provider": {
+                        "require_parameters": True,
+                    }
+                }
+            },
+        )
+
+    def test_openrouter_model_requires_its_own_api_key(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {"OPENROUTER_API_KEY": ""},
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "OPENROUTER_API_KEY is required",
+            ):
+                create_reasoning_llm("openrouter/openai/example")
+
     def test_bridge_list_schema_has_an_object_root(self) -> None:
         schema = MentalModelBridgeList.model_json_schema()
         self.assertEqual(schema["type"], "object")
@@ -394,13 +449,16 @@ class BridgeTests(unittest.TestCase):
 
     def test_bridge_builder_rehydrates_authoritative_evidence(self) -> None:
         bridge = _bridge(candidate=False)
-        altered_claim = bridge.retrieved_data[0].model_copy(
-            update={"statement": "Altered by the bridge builder."}
-        )
-        returned = MentalModelBridgeList(
+        returned = MentalModelBridgeDraftList(
             bridges=[
-                bridge.model_copy(
-                    update={"retrieved_data": [altered_claim]}
+                MentalModelBridgeDraft(
+                    bridge_id=bridge.bridge_id,
+                    analytical_question=bridge.analytical_question,
+                    search_query=bridge.search_query,
+                    decision_stage=bridge.decision_stage,
+                    domains=bridge.domains,
+                    importance=bridge.importance,
+                    retrieved_claim_ids=["micro_valuation_1"],
                 )
             ]
         )
@@ -419,6 +477,38 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(
             result[0].retrieved_data[0].statement,
             _evidence().statement,
+        )
+
+    def test_bridge_builder_rehydrates_authoritative_question(self) -> None:
+        bridge = _bridge(candidate=False)
+        returned = MentalModelBridgeDraftList(
+            bridges=[
+                MentalModelBridgeDraft(
+                    bridge_id=bridge.bridge_id,
+                    analytical_question=bridge.analytical_question,
+                    search_query=bridge.search_query,
+                    decision_stage=bridge.decision_stage,
+                    domains=bridge.domains,
+                    importance=bridge.importance,
+                    retrieved_claim_ids=["micro_valuation_1"],
+                )
+            ]
+        )
+
+        with patch(
+            "crew.agents.run_structured_reasoning",
+            return_value=returned,
+        ):
+            result = build_mental_model_bridges(
+                _question(),
+                _micro(),
+                MacroView(as_of_date=TODAY),
+                model="openai/example",
+            )
+
+        self.assertEqual(
+            result[0].normalised_question,
+            _question().normalised_question,
         )
 
     def test_directional_edges_are_not_reversed(self) -> None:

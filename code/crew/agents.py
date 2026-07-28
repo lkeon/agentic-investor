@@ -8,6 +8,7 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
+from crew.config import create_reasoning_llm
 from crew.schemas import (
     CIOReasoningInput,
     CIOReasoningOutput,
@@ -17,7 +18,7 @@ from crew.schemas import (
     InvestorReasoningOutput,
     MacroView,
     MentalModelBridge,
-    MentalModelBridgeList,
+    MentalModelBridgeDraftList,
     MicroView,
 )
 
@@ -88,18 +89,16 @@ from every claim_id in the supplied MicroView.
 """.strip()
 
 BRIDGE_PROMPT = """
-Return one MentalModelBridgeList object. Its bridges field must contain 1 to 8
-self-contained MentalModelBridge objects. Each bridge must cover one material analytical
+Return one MentalModelBridgeDraftList object. Its bridges field must contain 1 to 6
+compact bridge selections. Each bridge must cover one material analytical
 need, such as business quality, management, financial resilience, valuation,
 cycle exposure, permanent-loss risk, portfolio considerations, or monitoring.
-Copy only EvidenceClaim objects supplied in MicroView or MacroView; do not
-alter them or invent evidence. Use focused semantic search text rather than one
-large company summary. Preserve the normalized question and holding policy
-exactly. Treat macro as a secondary thesis-monitoring input, not the primary
-source of an investment conclusion.
-Set investor_id to null and mental_model_candidates to an empty list. The
-bridges identify what mental models should help interpret; they must not make
-an investment recommendation.
+Select 1 to 6 supplied EvidenceClaim claim_id values per bridge; do not copy,
+alter, or invent EvidenceClaim objects. Use focused semantic search text rather
+than one large company summary. Treat macro as a secondary thesis-monitoring
+input, not the primary source of an investment conclusion. The bridges identify
+what mental models should help interpret; they must not make an investment
+recommendation.
 """.strip()
 
 INVESTOR_REASONING_PROMPT = """
@@ -186,7 +185,7 @@ def run_structured_reasoning(
             "boundary between sourced evidence, canonical mental models, and "
             "judgment. Never claim to be a historical investor."
         ),
-        llm=model,
+        llm=create_reasoning_llm(model),
         allow_delegation=False,
         reasoning=False,
         memory=False,
@@ -357,7 +356,7 @@ def build_mental_model_bridges(
             "micro_view": micro_view.model_dump(mode="json"),
             "macro_view": macro_view.model_dump(mode="json"),
         },
-        output_schema=MentalModelBridgeList,
+        output_schema=MentalModelBridgeDraftList,
         model=model,
         verbose=verbose,
     )
@@ -365,16 +364,7 @@ def build_mental_model_bridges(
     authoritative_claims = _claim_map(micro_view, macro_view)
     hydrated: list[MentalModelBridge] = []
     for bridge in result.bridges:
-        if bridge.investor_id is not None or bridge.mental_model_candidates:
-            raise ValueError(
-                "Bridge builder cannot assign investors or mental models."
-            )
-        if bridge.normalised_question != question.normalised_question:
-            raise ValueError("Bridge changed the normalized question.")
-        if bridge.holding_policy != question.holding_policy:
-            raise ValueError("Bridge changed the holding policy.")
-
-        claim_ids = [claim.claim_id for claim in bridge.retrieved_data]
+        claim_ids = bridge.retrieved_claim_ids
         unknown = set(claim_ids) - set(authoritative_claims)
         if unknown:
             raise ValueError(
@@ -382,13 +372,22 @@ def build_mental_model_bridges(
                 f"{sorted(unknown)}"
             )
         hydrated.append(
-            bridge.model_copy(
-                update={
-                    "retrieved_data": [
-                        authoritative_claims[claim_id]
-                        for claim_id in claim_ids
-                    ]
-                }
+            MentalModelBridge(
+                bridge_id=bridge.bridge_id,
+                investor_id=None,
+                normalised_question=question.normalised_question,
+                holding_policy=question.holding_policy,
+                analytical_question=bridge.analytical_question,
+                search_query=bridge.search_query,
+                decision_stage=bridge.decision_stage,
+                domains=bridge.domains,
+                importance=bridge.importance,
+                retrieved_data=[
+                    authoritative_claims[claim_id]
+                    for claim_id in claim_ids
+                ],
+                missing_information=bridge.missing_information,
+                mental_model_candidates=[],
             )
         )
     return hydrated

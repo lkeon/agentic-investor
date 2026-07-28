@@ -74,8 +74,12 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Add valid `OPENAI_API_KEY` and `DATABASE_URL` values to `.env`. The committee
-expects a populated canonical mental-model database; create its tables with:
+Add valid `OPENAI_API_KEY` and `DATABASE_URL` values to `.env`.
+`OPENAI_API_KEY` remains required for canonical-model retrieval embeddings.
+To route any crew reasoning stage through OpenRouter, also set
+`OPENROUTER_API_KEY` and give that stage an
+`openrouter/<provider>/<model>` identifier. The committee expects a populated
+canonical mental-model database; create its tables with:
 
 ```bash
 PYTHONPATH=code python -m mental_model_pipeline.database.setup_database
