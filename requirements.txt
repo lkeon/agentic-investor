@@ -10,7 +10,7 @@ python-dotenv>=1.0,<2.0
 
 openai>=2.0,<3.0
 numpy>=2.0,<3.0
-# crewai>=1.15,<2
+crewai>=1.15,<2
 
 streamlit>=1.53,<2
 plotly>=6,<7

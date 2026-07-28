@@ -9,11 +9,10 @@ from collections.abc import Sequence
 
 from mental_model_pipeline.fragments.constants import (
     EMBEDDING_DIMENSIONS,
+    EMBEDDING_MODEL,
 )
 from mental_model_pipeline.fragments.schemas import MentalModelFragment
 
-
-EMBEDDING_MODEL = "text-embedding-3-large"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ENV_PATH = PROJECT_ROOT / ".env"

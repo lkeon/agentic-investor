@@ -21,7 +21,7 @@ from mental_model_pipeline.canonical.clustering import (
     cluster_fragments,
 )
 from mental_model_pipeline.canonical.embeddings import (
-    CANONICAL_EMBEDDING_MODEL,
+    CANONICAL_EMBEDDING_IDENTITY,
     create_canonical_embeddings,
 )
 from mental_model_pipeline.canonical.export_jsonl import (
@@ -714,7 +714,7 @@ def main() -> int:
                     models=models,
                     embeddings=embeddings,
                     embedding_model=(
-                        CANONICAL_EMBEDDING_MODEL
+                        CANONICAL_EMBEDDING_IDENTITY
                     ),
                     canonicalisation_model=provider.model,
                     prompt_version=(

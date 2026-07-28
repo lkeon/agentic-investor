@@ -176,11 +176,18 @@ CANONICAL_REASONING_EFFORT=low
 HIERARCHY_MODEL=gpt-5.6-luna
 HIERARCHY_REASONING_EFFORT=low
 
+# The provider adapter is replaceable; OpenAI is the MVP implementation.
+CANONICAL_EMBEDDING_PROVIDER=openai
 # Defaults to the fragment embedding model when omitted.
 CANONICAL_EMBEDDING_MODEL=text-embedding-3-large
+# Must remain 1024 until the pgvector column is migrated.
+CANONICAL_EMBEDDING_DIMENSIONS=1024
 ```
 
 CLI `--model` and `--reasoning-effort` arguments override the environment.
+Canonical rows store the embedding identity as
+`provider/model/dimensions`. Changing provider or model requires re-embedding
+the canonical models; changing dimensions also requires a database migration.
 
 ## Database setup
 

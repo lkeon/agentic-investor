@@ -51,10 +51,11 @@ local corpus artifacts and are excluded from Git.
 
 ## Setup
 
-Create a virtual environment and install the project dependencies:
+Create a Python 3.13 virtual environment and install the project dependencies.
+CrewAI currently requires Python below 3.14:
 
 ```bash
-python -m venv .venvinvest
+python3.13 -m venv .venvinvest
 source .venvinvest/bin/activate
 python -m pip install -r requirements.txt
 ```
