@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from committee_service import discover_investors
+from committee_service import InvestorDiscoveryError, discover_investors
 
 
 class InvestorDiscoveryTests(unittest.TestCase):
@@ -18,6 +18,24 @@ class InvestorDiscoveryTests(unittest.TestCase):
             discover_investors(),
             ["buffett", "marks", "pabrai"],
         )
+
+    @patch.dict(
+        "os.environ",
+        {"DILIGENCE_DEPLOYMENT": "streamlit_cloud"},
+    )
+    @patch(
+        "committee_service._discover_investors_from_database",
+        return_value=set(),
+    )
+    def test_cloud_does_not_mask_empty_database_with_fallback(
+        self,
+        _: object,
+    ) -> None:
+        with self.assertRaisesRegex(
+            InvestorDiscoveryError,
+            "contains no canonical mental models",
+        ):
+            discover_investors()
 
 
 if __name__ == "__main__":
