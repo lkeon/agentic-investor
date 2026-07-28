@@ -20,6 +20,7 @@ if str(APP_DIR) not in sys.path:
 from committee_service import (
     CommitteeRunError,
     CommitteeStopped,
+    InvestorDiscoveryError,
     ProgressUpdate,
     discover_investors,
     display_name,
@@ -45,7 +46,7 @@ DECISION_LABELS = {
 }
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=60)
 def _available_investors() -> list[str]:
     return discover_investors()
 
@@ -330,6 +331,13 @@ def _render_input() -> object:
     if "question_input" not in st.session_state:
         st.session_state.question_input = ""
 
+    try:
+        available = _available_investors()
+    except InvestorDiscoveryError as error:
+        st.error("The mental-model library is unavailable.")
+        st.caption(str(error))
+        st.stop()
+
     with st.form("committee_form", border=False):
         st.markdown(
             '<div class="form-heading">Convene the Diligence Room</div>',
@@ -424,7 +432,6 @@ def _render_input() -> object:
                     """
                 )
         with st.expander("Diligence Room Settings", expanded=False):
-            available = _available_investors()
             preferred = [
                 investor
                 for investor in ("buffett", "marks", "flatt")

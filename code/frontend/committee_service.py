@@ -25,6 +25,16 @@ _PROCESS_LOCK = Lock()
 _ACTIVE_PROCESS: subprocess.Popen[str] | None = None
 _STOPPED_PROCESS_IDS: set[int] = set()
 MAX_TECHNICAL_LOG_LINES = 8000
+STREAMLIT_CLOUD_MODE = "streamlit_cloud"
+
+
+def _is_streamlit_cloud() -> bool:
+    """Return whether hosted deployment safeguards should be enabled."""
+
+    return (
+        os.getenv("DILIGENCE_DEPLOYMENT", "").strip().lower()
+        == STREAMLIT_CLOUD_MODE
+    )
 
 
 @dataclass(frozen=True)
@@ -46,6 +56,10 @@ class CommitteeRunError(RuntimeError):
 
 class CommitteeStopped(CommitteeRunError):
     """Raised when the user stops an active committee run."""
+
+
+class InvestorDiscoveryError(RuntimeError):
+    """Raised when a hosted app cannot discover usable database investors."""
 
 
 def _terminate_process(process: subprocess.Popen[str]) -> None:
@@ -95,7 +109,12 @@ def _discover_investors_from_database() -> set[str]:
             accepted_embedding_identities,
         )
         from mental_model_pipeline.database.connection import SessionLocal
-    except (ImportError, RuntimeError):
+    except (ImportError, RuntimeError) as error:
+        if _is_streamlit_cloud():
+            raise InvestorDiscoveryError(
+                "The hosted mental-model database could not be configured. "
+                "Verify DATABASE_URL and the deployment dependencies."
+            ) from error
         # Local rendering without configured infrastructure can still use the
         # canonical export or the minimal fallback below.
         return set()
@@ -117,7 +136,13 @@ def _discover_investors_from_database() -> set[str]:
                 )
                 if investor_id and investor_id.strip()
             }
-    except SQLAlchemyError:
+    except SQLAlchemyError as error:
+        if _is_streamlit_cloud():
+            raise InvestorDiscoveryError(
+                "The hosted mental-model database could not be queried. "
+                "Verify DATABASE_URL, network access, TLS settings, and that "
+                "the canonical tables exist."
+            ) from error
         return set()
 
 
@@ -127,6 +152,12 @@ def discover_investors() -> list[str]:
     investors = _discover_investors_from_database()
     if investors:
         return sorted(investors)
+
+    if _is_streamlit_cloud():
+        raise InvestorDiscoveryError(
+            "The hosted database is reachable but contains no canonical "
+            "mental models compatible with the configured embedding identity."
+        )
 
     # The export is useful for local UI rendering before PostgreSQL starts,
     # but it is intentionally excluded from deployed source control.
