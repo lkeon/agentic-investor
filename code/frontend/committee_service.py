@@ -1,126 +1,375 @@
-"""UI-facing committee service.
-
-The mock implementation lets the frontend run without CrewAI, a database,
-or an LLM key. Replace `run_committee` with an adapter to your existing crew
-when you are ready.
-"""
+"""Adapter between the Streamlit UI and the existing committee CLI."""
 
 from __future__ import annotations
 
-import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
+import json
+import os
+from pathlib import Path
+import re
+import signal
+import subprocess
+import sys
+from tempfile import NamedTemporaryFile
+from threading import Lock
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CODE_ROOT = PROJECT_ROOT / "code"
+DEFAULT_OUTPUT_PATH = (
+    PROJECT_ROOT / "data" / "processed" / "crew" / "committee_result.json"
+)
+ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+_PROCESS_LOCK = Lock()
+_ACTIVE_PROCESS: subprocess.Popen[str] | None = None
+_STOPPED_PROCESS_IDS: set[int] = set()
+MAX_TECHNICAL_LOG_LINES = 8000
 
 
 @dataclass(frozen=True)
-class InvestorPerspective:
-    investor: str
-    assessment: str
+class ProgressUpdate:
+    """One user-facing stage emitted while the CLI is running."""
+
+    label: str
+    progress: int
+    detail: str
 
 
-@dataclass(frozen=True)
-class DebatePoint:
-    speaker: str
-    argument: str
+class CommitteeRunError(RuntimeError):
+    """Raised when the committee CLI exits without a valid result."""
+
+    def __init__(self, message: str, logs: list[str]) -> None:
+        self.logs = logs
+        super().__init__(message)
 
 
-@dataclass(frozen=True)
-class CommitteeResult:
-    mental_models: list[str]
-    perspectives: list[InvestorPerspective]
-    debate: list[DebatePoint]
-    conclusion: str
-    sources: list[str]
+class CommitteeStopped(CommitteeRunError):
+    """Raised when the user stops an active committee run."""
 
 
-async def run_committee(question: str) -> CommitteeResult:
-    """Return a deterministic mock result for local UI testing.
+def _terminate_process(process: subprocess.Popen[str]) -> None:
+    """Terminate the crew process group, escalating only when it does not exit."""
 
-    CrewAI integration can later replace this function while preserving the
-    `CommitteeResult` contract expected by `app.py`.
-    """
-    await asyncio.sleep(0.35)
+    if process.poll() is not None:
+        return
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError):
+        process.terminate()
+    try:
+        process.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            process.kill()
+        process.wait(timeout=2)
 
-    mental_models = [
-        "Margin of safety",
-        "Capital-cycle discipline",
-        "Downside-first credit analysis",
-        "Inflation-linked cash-flow durability",
-        "Management capital-allocation record",
-    ]
 
-    perspectives = [
-        InvestorPerspective(
-            investor="Warren Buffett",
-            assessment=(
-                "The central question is whether the business has durable pricing "
-                "power and whether leverage could force permanent capital loss. "
-                "A predictable revenue contract is valuable only if maintenance "
-                "capital expenditure and refinancing needs remain manageable."
-            ),
-        ),
-        InvestorPerspective(
-            investor="Howard Marks",
-            assessment=(
-                "The investment may be attractive if the market already discounts "
-                "a difficult refinancing environment. The committee should compare "
-                "the downside embedded in the price with the downside that is "
-                "actually plausible under higher-for-longer rates."
-            ),
-        ),
-        InvestorPerspective(
-            investor="Bruce Flatt",
-            assessment=(
-                "Long-duration infrastructure can protect real cash flows, but the "
-                "quality of the contractual framework matters more than the asset "
-                "label. Focus on indexed revenues, operating resilience, funding "
-                "structure, and opportunities to improve the asset operationally."
-            ),
-        ),
-    ]
+def stop_active_committee() -> bool:
+    """Stop the committee currently launched by this frontend process."""
 
-    debate = [
-        DebatePoint(
-            speaker="Marks",
-            argument=(
-                "Buffett's quality threshold may reject a security whose price "
-                "already compensates investors for refinancing risk."
-            ),
-        ),
-        DebatePoint(
-            speaker="Buffett",
-            argument=(
-                "A low valuation is not protection when creditors control the "
-                "outcome and equity lacks the ability to wait."
-            ),
-        ),
-        DebatePoint(
-            speaker="Flatt",
-            argument=(
-                "Both views depend on the debt ladder. The asset can be excellent "
-                "while the security is poor, so financing must be analysed separately."
-            ),
-        ),
-    ]
+    with _PROCESS_LOCK:
+        process = _ACTIVE_PROCESS
+        if process is None or process.poll() is not None:
+            return False
+        _STOPPED_PROCESS_IDS.add(process.pid)
+    _terminate_process(process)
+    return True
 
-    conclusion = (
-        f"For the question, **{question}**, the committee reaches a **conditional "
-        "watch-list** conclusion. The business may have attractive real-asset "
-        "characteristics, but investment should depend on a full debt-maturity "
-        "schedule, interest-coverage stress test, maintenance-capex requirements, "
-        "and evidence that revenue indexation survives adverse conditions. A price "
-        "that provides a genuine margin of safety is essential."
+
+def discover_investors() -> list[str]:
+    """Discover investor IDs from the local canonical export."""
+
+    export_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "canonical"
+        / "canonical_mental_models.jsonl"
     )
+    investors: set[str] = set()
+    if export_path.is_file():
+        with export_path.open(encoding="utf-8") as stream:
+            for line in stream:
+                try:
+                    investor_id = json.loads(line).get("investor_id")
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(investor_id, str) and investor_id.strip():
+                    investors.add(investor_id.strip())
+    return sorted(investors) or ["buffett", "flatt", "marks"]
 
-    sources = [
-        "Mock source: Berkshire Hathaway shareholder-letter mental models",
-        "Mock source: Oaktree memos on risk and market cycles",
-        "Mock source: Brookfield shareholder letters on real assets",
-    ]
 
-    return CommitteeResult(
-        mental_models=mental_models,
-        perspectives=perspectives,
-        debate=debate,
-        conclusion=conclusion,
-        sources=sources,
+def load_latest_result() -> dict[str, object] | None:
+    """Load and validate the most recent completed committee artifact."""
+
+    if not DEFAULT_OUTPUT_PATH.is_file():
+        return None
+    try:
+        return _load_validated_result(DEFAULT_OUTPUT_PATH)
+    except CommitteeRunError:
+        # A dry run may have written a partial artifact. It is not a completed
+        # result and should not break the UI.
+        return None
+
+
+def _stage_update(line: str) -> ProgressUpdate | None:
+    """Translate stable CLI messages into customer-facing progress."""
+
+    fixed_stages = (
+        (
+            "Normalising question",
+            "Clarifying the investment decision",
+            8,
+            (
+                "The question is being translated into a precise value-investing "
+                "decision without adding unsupported facts."
+            ),
+        ),
+        (
+            "Building MicroView",
+            "Structuring company evidence",
+            20,
+            (
+                "The supplied company, financial, management, valuation, and "
+                "risk evidence is being organised into an auditable MicroView."
+            ),
+        ),
+        (
+            "Building MacroView",
+            "Mapping material macro influences",
+            32,
+            (
+                "Only macro conditions with a direct, material connection to "
+                "the company thesis are being identified."
+            ),
+        ),
+        (
+            "Building mental-model data bridges",
+            "Defining analytical pathways",
+            43,
+            (
+                "The evidence is being translated into focused questions for "
+                "mental-model retrieval."
+            ),
+        ),
+        (
+            "Retrieving mental models",
+            "Retrieving reasoning guardrails",
+            54,
+            (
+                "The hierarchical model network is being searched separately "
+                "for each selected investor perspective."
+            ),
+        ),
+        (
+            "CIO synthesis",
+            "Synthesising the final decision",
+            94,
+            (
+                "The CIO is weighing the independent perspectives, decisive "
+                "evidence, risks, and unresolved information."
+            ),
+        ),
+        (
+            "Committee result written",
+            "Diligence complete",
+            100,
+            (
+                "The validated decision record is ready for review and "
+                "download."
+            ),
+        ),
     )
+    for marker, label, progress, detail in fixed_stages:
+        if marker in line:
+            return ProgressUpdate(label, progress, detail)
+
+    investor_match = re.search(r"Investor (\d+)/(\d+): ([^\.]+)", line)
+    if investor_match:
+        current, total, investor_id = investor_match.groups()
+        fraction = int(current) / max(1, int(total))
+        progress = 55 + round(37 * fraction)
+        investor_name = display_name(investor_id)
+        return ProgressUpdate(
+            f"Independent analysis · {investor_name}",
+            progress,
+            (
+                f"The {investor_name} perspective is testing the supplied "
+                "evidence against its retrieved mental-model set."
+            ),
+        )
+
+    if "PostgreSQL is unavailable" in line:
+        return ProgressUpdate(
+            "Preparing the model library",
+            46,
+            (
+                "The local mental-model database is being started before "
+                "retrieval."
+            ),
+        )
+    if "PostgreSQL is ready" in line:
+        return ProgressUpdate(
+            "Model library ready",
+            49,
+            "The canonical mental-model library is available for retrieval.",
+        )
+    return None
+
+
+def display_name(identifier: str) -> str:
+    """Convert a stable machine identifier into a UI label."""
+
+    return identifier.replace("_", " ").replace("-", " ").title()
+
+
+def run_committee(
+    question: str,
+    *,
+    investors: list[str],
+    research_context: str | None,
+    top_k: int,
+    neighbours: int,
+    technical_debug: bool = False,
+    on_progress: Callable[[ProgressUpdate, list[str]], None] | None = None,
+) -> dict[str, object]:
+    """Run the real committee CLI and return its validated JSON artifact."""
+
+    global _ACTIVE_PROCESS
+
+    if not question.strip():
+        raise ValueError("An investment question is required.")
+    if not investors:
+        raise ValueError("Select at least one investor perspective.")
+
+    command = [
+        sys.executable,
+        "-m",
+        "crew.run_crew",
+        question.strip(),
+        "--top-k",
+        str(top_k),
+        "--neighbours",
+        str(neighbours),
+        "--output-path",
+        str(DEFAULT_OUTPUT_PATH),
+    ]
+    for investor_id in investors:
+        command.extend(["--investor", investor_id])
+    if technical_debug:
+        # CrewAI verbose output is useful for prompt, task, tool, validation,
+        # timing, and model-quality diagnosis. It is shown only in the local
+        # technical log selected by the user.
+        command.append("--verbose")
+    context_path: Path | None = None
+    process: subprocess.Popen[str] | None = None
+    try:
+        if research_context and research_context.strip():
+            # The CLI already owns research-file parsing. A temporary UTF-8
+            # file keeps the UI adapter thin and avoids a second code path.
+            with NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                suffix=".txt",
+                prefix="committee-research-",
+                delete=False,
+            ) as context_file:
+                context_file.write(research_context)
+                context_path = Path(context_file.name)
+            command.extend(["--research-context", str(context_path)])
+
+        environment = os.environ.copy()
+        existing_pythonpath = environment.get("PYTHONPATH")
+        environment["PYTHONPATH"] = str(CODE_ROOT) + (
+            os.pathsep + existing_pythonpath if existing_pythonpath else ""
+        )
+        process = subprocess.Popen(
+            command,
+            cwd=PROJECT_ROOT,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            # A dedicated process group lets the Stop button terminate the
+            # crew and any child processes it may have launched.
+            start_new_session=True,
+        )
+        with _PROCESS_LOCK:
+            _ACTIVE_PROCESS = process
+
+        logs: list[str] = []
+        current_update = ProgressUpdate(
+            "Preparing the diligence workspace",
+            3,
+            (
+                "The selected perspectives, research context, and local "
+                "runtime are being prepared."
+            ),
+        )
+        if on_progress:
+            on_progress(current_update, logs)
+
+        assert process.stdout is not None
+        for raw_line in process.stdout:
+            line = ANSI_ESCAPE.sub("", raw_line.rstrip("\r\n"))
+            # Preserve CrewAI panels and stderr diagnostics verbatim. Collapse
+            # only repeated blank lines to keep long debug sessions readable.
+            if not line and logs and not logs[-1]:
+                continue
+            logs.append(line)
+            logs = logs[-MAX_TECHNICAL_LOG_LINES:]
+            update = _stage_update(line)
+            if update is not None:
+                current_update = update
+            if on_progress:
+                on_progress(current_update, logs)
+
+        return_code = process.wait()
+        with _PROCESS_LOCK:
+            was_stopped = process.pid in _STOPPED_PROCESS_IDS
+            _STOPPED_PROCESS_IDS.discard(process.pid)
+        if was_stopped:
+            raise CommitteeStopped("Committee execution stopped.", logs)
+        if return_code != 0:
+            detail = next(
+                (line for line in reversed(logs) if line.strip()),
+                "No diagnostic output was returned.",
+            )
+            raise CommitteeRunError(
+                f"Committee execution failed: {detail}",
+                logs,
+            )
+        return _load_validated_result(DEFAULT_OUTPUT_PATH)
+    finally:
+        if process is not None:
+            if process.poll() is None:
+                _terminate_process(process)
+            with _PROCESS_LOCK:
+                if _ACTIVE_PROCESS is process:
+                    _ACTIVE_PROCESS = None
+                _STOPPED_PROCESS_IDS.discard(process.pid)
+        if context_path is not None:
+            context_path.unlink(missing_ok=True)
+
+
+def _load_validated_result(path: Path) -> dict[str, object]:
+    """Validate UI input against the same Pydantic contract as the CLI."""
+
+    if str(CODE_ROOT) not in sys.path:
+        sys.path.insert(0, str(CODE_ROOT))
+    from crew.schemas import InvestmentCommitteeOutput
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        result = InvestmentCommitteeOutput.model_validate(payload)
+    except (OSError, json.JSONDecodeError, ValueError) as error:
+        raise CommitteeRunError(
+            f"The committee result is missing or invalid: {error}",
+            [],
+        ) from error
+    return result.model_dump(mode="json")

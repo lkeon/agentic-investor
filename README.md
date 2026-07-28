@@ -1,272 +1,116 @@
 # Agentic Investor
 
-Agentic Investor is an experimental research pipeline for turning investor
-documents into structured, searchable mental models.
+Agentic Investor is a value-investing decision-support system built around
+explicit mental models. It helps answer a practical question:
 
-The current corpus focuses on Warren Buffett, Charlie Munger, Howard Marks,
-Bruce Flatt, Mohnish Pabrai, and Guy Spier. Source material is validated,
-converted to canonical Markdown, analysed with an OpenAI model, validated with
-Pydantic, embedded, and stored in PostgreSQL. The same fragment data is also
-exported as JSONL for inspection and downstream processing.
+> Given the evidence available today, how would several long-term investors
+> frame this investment, and what decision follows?
 
-The longer-term goal is an agentic investment committee: investor-specific
-agents retrieve relevant mental models, debate an investment case, and
-contribute to a consolidated research memo.
+The project separates facts from interpretation. Company and macro evidence
+are structured first, relevant mental models are retrieved from an
+investor-specific knowledge base, and each investor perspective reasons
+independently. A CIO then compares those views and produces one concise,
+auditable decision.
 
-## Pipeline
+## What the product does
 
 ```text
-investor source manifests
-        ↓
-validated raw corpus manifest
-        ↓
-TXT/PDF documents → canonical Markdown
-        ↓
-processed Markdown manifest
-        ↓
-Pydantic-validated mental-model fragments
-        ↓
-OpenAI embeddings
-        ↓
-PostgreSQL + complete JSONL export
+Investment question + supplied research
+                    ↓
+       Company view + macro view
+                    ↓
+       Material analytical questions
+                    ↓
+ Investor-specific mental-model retrieval
+                    ↓
+      Independent investor reasoning
+                    ↓
+ Structured CIO decision and conditions
 ```
 
-The extraction stage currently reads each document as a whole and selects up
-to ten of its most important, distinct, and generally applicable investment
-models. Documents are not chunked during the MVP stage.
+The result explains:
 
-## Generated Artifacts
+- the stance and confidence of each investor perspective;
+- which mental models were retrieved and which were actually applied;
+- how evidence and counterevidence support each inference;
+- risks of permanent capital loss and thesis-break conditions;
+- the CIO decision, holding approach, conditions, and missing information;
+- the evidence and sources behind the analysis.
 
-| Artifact | Location |
-| --- | --- |
-| Validated raw corpus manifest | `data/raw/corpus_manifest.jsonl` |
-| Canonical Markdown | `data/processed/markdown/investors/...` |
-| Processed Markdown manifest | `data/processed/markdown_manifest.jsonl` |
-| Exported mental-model fragments | `data/processed/fragments/mental_model_fragments.jsonl` |
+The holding approach has no fixed end date: ownership continues only while the
+company thesis remains valid. Macro conditions are monitored as secondary
+inputs and matter only when they have a direct, material effect on that thesis.
 
-The fragment export contains document provenance, fragment fields, related
-entities, database identifiers, embedding metadata, and complete
-1,024-dimensional embedding vectors. Files under `data/` are generated or
-local corpus artifacts and are excluded from Git.
+## Mental-model knowledge base
 
-## Setup
+The repository also builds the knowledge base used by the committee. Source
+documents from investors such as Warren Buffett, Charlie Munger, Howard Marks,
+Bruce Flatt, Mohnish Pabrai, and Guy Spier are converted into structured,
+attributed mental models.
 
-Create a Python 3.13 virtual environment and install the project dependencies.
-CrewAI currently requires Python below 3.14:
+Canonical models retain their source provenance, applicability conditions,
+failure conditions, investment-stage relevance, and embedding identity. They
+are stored in PostgreSQL with `pgvector` and can be explored through the
+included 3D visualisation.
+
+## Current MVP boundary
+
+The committee structures only the investment question and research supplied by
+the user. It does not yet browse the web or fetch live filings, prices, or
+market data. Unsupported decision-relevant facts remain explicit unknowns
+rather than being filled from model memory.
+
+This is research and decision support, not personalised financial advice.
+
+## Run the committee
+
+The project uses Python 3.13 because the current CrewAI runtime requires Python
+below 3.14.
 
 ```bash
-python3.13 -m venv .venvinvest
-source .venvinvest/bin/activate
+python3.13 -m venv .venvinv
+source .venvinv/bin/activate
 python -m pip install -r requirements.txt
+cp .env.example .env
 ```
 
-Browser binaries are only needed for browser-based acquisition scripts:
-
-```bash
-python -m playwright install chromium
-```
-
-Create a `.env` file in the project root containing:
-
-```dotenv
-OPENAI_API_KEY=your-api-key
-DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/agentic_investor
-
-# Optional; defaults to gpt-5.6-terra.
-FRAGMENT_EXTRACTION_MODEL=gpt-5.6-terra
-```
-
-The database must be PostgreSQL with the `pgvector` extension enabled. Once the
-database exists, create the application tables:
+Add valid `OPENAI_API_KEY` and `DATABASE_URL` values to `.env`. The committee
+expects a populated canonical mental-model database; create its tables with:
 
 ```bash
 PYTHONPATH=code python -m mental_model_pipeline.database.setup_database
 ```
 
-The setup module creates missing tables from the SQLAlchemy models; it is not a
-general schema-migration system.
-
-## Run the Pipeline
-
-Corpus acquisition, PDF splitting, manifest building, and Markdown conversion
-scripts are kept together in [code/data_ingestion](code/data_ingestion/README.md).
-
-### 1. Validate and build the raw corpus manifest
-
-Validate investor-level manifests without writing the combined manifest:
+Start the product interface:
 
 ```bash
-python code/data_ingestion/build_raw_manifest.py --check
+source .venvinv/bin/activate
+cd code/frontend
+python -m streamlit run app.py
 ```
 
-Build `data/raw/corpus_manifest.jsonl` after validation succeeds:
+Or run the committee directly:
 
 ```bash
-python code/data_ingestion/build_raw_manifest.py
+PYTHONPATH=code python -m crew.run_crew \
+  "Should I invest in Brookfield at the current price?" \
+  --investor buffett \
+  --investor marks \
+  --investor flatt
 ```
 
-The builder treats investor-level manifests as authoritative whitelists. It
-checks document identifiers, resolves source paths, validates date metadata,
-calculates SHA-256 hashes, detects duplicate identifiers and content, and
-writes the combined manifest atomically.
+## Project guide
 
-Use `--strict` with either command when warnings should produce a non-zero exit
-status.
+- [Committee workflow and CLI](code/crew/README.md)
+- [Streamlit product interface](code/frontend/README.md)
+- [Source ingestion](code/data_ingestion/README.md)
+- [Canonical mental-model construction](code/mental_model_pipeline/canonical/README.md)
+- [Mental-model visualisation](code/vis/README.md)
 
-### 2. Convert source documents to Markdown
+## Validation
+
+The committee contract tests are local and make no paid model calls:
 
 ```bash
-python code/data_ingestion/convert_corpus_to_markdown.py
+PYTHONPATH=code python -m unittest crew.test_crew -v
 ```
-
-TXT sources use deterministic text cleaning; PDF sources use Docling. The
-investor directory structure and document-level metadata are preserved in the
-generated Markdown. Successful unchanged documents are skipped on subsequent
-runs.
-
-To regenerate every Markdown document:
-
-```bash
-python code/data_ingestion/convert_corpus_to_markdown.py --force
-```
-
-### 3. Validate extraction inputs safely
-
-`--dry-run` validates manifest records, paths, file types, SHA-256 hashes,
-front matter, character counts, and investor identifiers. It deliberately does
-not load the database runtime or call the OpenAI API.
-
-Validate the first ten successful manifest entries:
-
-```bash
-PYTHONPATH=code python -m mental_model_pipeline.fragments.ingest_markdown_all \
-  --dry-run --process-num 10
-```
-
-Validate one manifest-listed Markdown file:
-
-```bash
-PYTHONPATH=code python -m mental_model_pipeline.fragments.ingest_markdown_all \
-  --dry-run \
-  --single-run data/processed/markdown/investors/flatt/shareholder_letters/shareholder_letter_2012_q1.md
-```
-
-### 4. Extract, embed, and store fragments
-
-Process one document:
-
-```bash
-PYTHONPATH=code python -m mental_model_pipeline.fragments.ingest_markdown_all \
-  --single-run data/processed/markdown/investors/flatt/shareholder_letters/shareholder_letter_2012_q1.md
-```
-
-Process only the first ten selected documents:
-
-```bash
-PYTHONPATH=code python -m mental_model_pipeline.fragments.ingest_markdown_all \
-  --process-num 10
-```
-
-Process every successful manifest entry:
-
-```bash
-PYTHONPATH=code python -m mental_model_pipeline.fragments.ingest_markdown_all
-```
-
-These commands make paid OpenAI extraction and embedding requests for new
-documents. Before making a request, the ingester checks the database and skips
-an identical document that has already been stored. A conflicting document ID
-or duplicate content is reported rather than silently overwritten.
-
-Each document is committed in its own transaction. Transient OpenAI failures
-are retried with capped exponential backoff, and processing continues after an
-individual document failure unless `--fail-fast` is supplied. Use
-`--retry-attempts NUMBER` to change the default of five attempts.
-
-Extraction starts with a 32,000-token output limit. If structured JSON is
-truncated, it retries twice with 64,000 and then 128,000 output tokens while
-using low reasoning effort. Other validation errors are reported without this
-fallback, and no database record is written for that document.
-
-After processing, committed manifest-backed fragments are read from the
-database in deterministic order and written atomically to
-`data/processed/fragments/mental_model_fragments.jsonl`.
-
-## Fragment Model
-
-Each extracted mental model records:
-
-- its kind, title, and core proposition;
-- mechanism, conditions, and failure conditions;
-- decision implications and applicable investment stages;
-- contextual regimes and related entities;
-- an exact supporting source quotation;
-- evidence strength and attribution;
-- review status and reason;
-- a conceptual embedding and embedding-model metadata.
-
-The Pydantic schemas reject unexpected fields, normalise list values, enforce
-attribution and review requirements, and constrain identifiers and field
-lengths. Source quotations that cannot be matched against the document are
-retained but marked for manual review.
-
-## MMC Visualisation
-
-The Streamlit visualisation in [`code/vis`](code/vis/README.md) reads canonical
-mental models and their stored relationships directly from PostgreSQL. MMC
-embeddings are projected onto the first three principal components and shown
-as an interactive 3D network.
-
-The interface supports investor and domain filtering, alternative colour
-coding, relationship filters, MMC inspection, and expandable supporting MMFs.
-Only generated analytical MMF fields are shown; source quotations and source
-references are excluded.
-
-![MMC detail explorer](docs/images/mmc_visualisation.png)
-
-Run it from the repository root:
-
-```bash
-PYTHONPATH=code python -m streamlit run code/vis/mmc_app.py
-```
-
-The visualisation's dependencies are listed separately in
-[`code/vis/requirements.txt`](code/vis/requirements.txt).
-
-## Tests
-
-Run the manifest-ingestion unit tests with:
-
-```bash
-PYTHONPATH=code python -m unittest \
-  mental_model_pipeline.fragments.test_extraction \
-  mental_model_pipeline.fragments.test_ingest_markdown_all -v
-```
-
-These tests use temporary files and mocked database/API boundaries. They cover
-the extraction output limit and malformed responses as well as dry-run
-isolation, single-file selection, document limits, hash validation, idempotent
-skips, retry behaviour, orchestration, and complete embedding exports without
-making paid requests.
-
-The other scripts named `test_*.py` under `fragments/` are manual database or
-embedding smoke tests and may require PostgreSQL or make an OpenAI API request.
-
-## Current Boundaries
-
-- Extraction operates on complete documents and currently returns at most ten
-  fragments per document.
-- Fragment codes use compact application-generated identifiers.
-- Database tables are created directly from SQLAlchemy metadata; migrations are
-  not yet managed by a migration framework.
-- Retrieval, investor-specific agents, debate orchestration, and consolidated
-  memo generation are not implemented yet.
-
-## Core Technologies
-
-- Pydantic for validated structured extraction
-- OpenAI Responses API and embeddings
-- SQLAlchemy, PostgreSQL, and pgvector
-- Docling and PyMuPDF for document processing
-- Playwright for browser-based acquisition tools
-- Streamlit, Plotly, and scikit-learn for MMC visualisation

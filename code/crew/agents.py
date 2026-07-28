@@ -14,7 +14,6 @@ from crew.schemas import (
     EvidenceClaim,
     InvestmentQuestion,
     OneInvestorReasoningInput,
-    InvestorPeerReviewOutput,
     InvestorReasoningOutput,
     MacroView,
     MentalModelBridge,
@@ -24,11 +23,6 @@ from crew.schemas import (
 
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
-InvestorOutputT = TypeVar(
-    "InvestorOutputT",
-    InvestorReasoningOutput,
-    InvestorPeerReviewOutput,
-)
 
 
 class CitationValidationError(ValueError):
@@ -57,9 +51,10 @@ class CitationValidationError(ValueError):
 QUESTION_SYSTEM_PROMPT = """
 Rewrite the user's request as a compact value-investing decision. Do not add
 facts. Preserve user-supplied facts as claims and everything else as an
-uncertainty. If the user gives no investment horizon, use a minimum of 2 years,
-no predetermined maximum, and indefinite_while_thesis_valid. "Indefinite" never
-means holding after the thesis breaks. Return no commentary outside the schema.
+uncertainty. Set holding_policy to indefinite_while_thesis_valid. The committee
+does not use a fixed number of years: ownership continues only while the
+business thesis remains valid and material macro transmission conditions do not
+invalidate it. Return no commentary outside the schema.
 """.strip()
 
 MICRO_RESEARCH_PROMPT = """
@@ -83,6 +78,9 @@ Create a MacroView containing only macro conditions with a plausible
 transmission to this company or security. Use only the normalized question,
 MicroView, and supplied research context. Do not produce a generic macro
 summary, use unstated model knowledge, or make an investment recommendation.
+Macro is a secondary input for value investing: include it only when it could
+materially alter business durability, financing capacity, asset value, or the
+thesis; do not let general macro commentary stand in for company analysis.
 Represent unsupported conditions as explicit unknown claims. Every sourced
 claim must reference a source_id present in this view. Every EvidenceClaim
 claim_id must begin with "macro_", be unique within the MacroView, and differ
@@ -96,13 +94,15 @@ need, such as business quality, management, financial resilience, valuation,
 cycle exposure, permanent-loss risk, portfolio considerations, or monitoring.
 Copy only EvidenceClaim objects supplied in MicroView or MacroView; do not
 alter them or invent evidence. Use focused semantic search text rather than one
-large company summary. Preserve the normalized question and horizon exactly.
+large company summary. Preserve the normalized question and holding policy
+exactly. Treat macro as a secondary thesis-monitoring input, not the primary
+source of an investment conclusion.
 Set investor_id to null and mental_model_candidates to an empty list. The
 bridges identify what mental models should help interpret; they must not make
 an investment recommendation.
 """.strip()
 
-ROUND_ONE_PROMPT = """
+INVESTOR_REASONING_PROMPT = """
 Produce an independent value-investing assessment using only the supplied
 OneInvestorReasoningInput. Evidence describes the world; mental-model candidates
 are interpretive guardrails. Decide whether each cited model applies by
@@ -110,20 +110,24 @@ checking its conditions and failure conditions. Do not introduce company facts
 or canonical codes. The citation_contract is authoritative: copy claim IDs and
 mental-model codes exactly, never construct, rename, prefix, or infer an ID. If
 no listed identifier supports a conclusion, use an empty citation list and
-state the limitation. Distinguish temporary concerns from permanent capital
-loss and assess the specified long-term horizon. Set round_number to 1. Do not
-include peer reviews or change fields.
-""".strip()
-
-ROUND_TWO_PROMPT = """
-Reassess the investment after reviewing every peer's round-one output. Continue
-to reason only through the reviewing investor's original mental-model
-candidates and the original evidence. Peer arguments are claims to evaluate,
-not new facts or new guardrails. Review each peer exactly once and distinguish
-factual, model-applicability, and weighting disagreements. State whether the
-view changed and why. The citation_contract remains authoritative: copy every
-claim ID and mental-model code exactly and never construct or transform one.
-Set round_number to 2.
+state the limitation. Write thesis as a self-contained 80 to 160 word
+investment view because it may be read without the detailed reasoning. It must
+state the investor's stance, summarise business quality and financial
+resilience, address valuation or margin of safety, identify the decisive risk
+or uncertainty, and state the conditions for continued ownership. Do not pad
+it with generic investing language or introduce unsupported facts. Return 3 to
+6 distinct mental_model_inferences. Cover every material analytical bridge
+while consolidating overlapping bridges into one conclusion. Address business
+quality, financial resilience and permanent loss, and valuation whenever
+relevant; if the supplied evidence cannot support one of those areas, make the
+missing evidence explicit. Do not create one inference per model or repeat the
+same conclusion in different words.
+Distinguish temporary concerns from permanent capital loss. Assess whether the
+thesis can support indefinite ownership while it remains valid. Base the
+conclusion primarily on business quality, financial resilience, management,
+and valuation; use macro only when a direct and material transmission changes
+the thesis. In thesis_durability_assessment, state the core micro thesis first
+and then only the macro conditions that could materially invalidate it.
 """.strip()
 
 CITATION_REPAIR_PROMPT = """
@@ -137,13 +141,18 @@ or uncertain. Do not introduce facts, models, conclusions, or identifiers.
 """.strip()
 
 CIO_PROMPT = """
-Act as the investment committee CIO. Synthesize the independent and peer-review
-rounds and make one value-investing decision. Do not perform new research,
-introduce facts, or introduce mental models. Cite only supplied evidence claim
-IDs and canonical codes. Separate business quality from security valuation,
-respect the stated horizon, prefer insufficient_information when a missing fact
-is decision-critical, and keep the final answer concise. Indefinite ownership
-is conditional on the thesis remaining valid.
+Act as the investment committee CIO. Compare the independent investor outputs
+and make one value-investing decision. Surface material agreement and
+disagreement in the committee synthesis. Do not perform new research,
+introduce facts, or introduce mental models. Select decisive mental-model codes
+only from models actually applied in investor inferences. Cite only supplied
+evidence claim IDs and canonical codes. Separate business quality from security
+valuation, prefer insufficient_information when a missing fact is
+decision-critical, and keep the final answer concise. Ownership is indefinite
+while the micro thesis remains valid; macro is secondary and matters only where
+it has a direct, material transmission that invalidates the thesis. Use
+decision_conditions for continued-ownership conditions: prioritise micro thesis
+conditions and include macro only when that direct material link exists.
 """.strip()
 
 
@@ -362,14 +371,8 @@ def build_mental_model_bridges(
             )
         if bridge.normalised_question != question.normalised_question:
             raise ValueError("Bridge changed the normalized question.")
-        if (
-            bridge.investment_horizon_min_years
-            != question.investment_horizon_min_years
-            or bridge.investment_horizon_max_years
-            != question.investment_horizon_max_years
-            or bridge.holding_policy != question.holding_policy
-        ):
-            raise ValueError("Bridge changed the investment horizon.")
+        if bridge.holding_policy != question.holding_policy:
+            raise ValueError("Bridge changed the holding policy.")
 
         claim_ids = [claim.claim_id for claim in bridge.retrieved_data]
         unknown = set(claim_ids) - set(authoritative_claims)
@@ -443,15 +446,10 @@ def _citation_contract(data: OneInvestorReasoningInput) -> dict[str, object]:
 
 def _validate_investor_output(
     data: OneInvestorReasoningInput,
-    output: InvestorReasoningOutput | InvestorPeerReviewOutput,
-    *,
-    expected_round: int,
-    expected_peers: set[str] | None = None,
-) -> InvestorReasoningOutput | InvestorPeerReviewOutput:
+    output: InvestorReasoningOutput,
+) -> InvestorReasoningOutput:
     if output.investor_id != data.investor_id:
         raise ValueError("Investor output identity does not match its input.")
-    if output.round_number != expected_round:
-        raise ValueError(f"Expected investor round {expected_round}.")
 
     evidence_ids, model_codes = _allowed_ids(data)
     used_evidence = {
@@ -474,40 +472,22 @@ def _validate_investor_output(
             unknown_evidence=unknown_evidence,
             unknown_models=unknown_models,
         )
-
-    if expected_round == 2:
-        if not isinstance(output, InvestorPeerReviewOutput):
-            raise ValueError("Round two must use the peer-review output schema.")
-        expected = expected_peers or set()
-        returned = [
-            review.peer_investor_id for review in output.peer_reviews
-        ]
-        if len(returned) != len(set(returned)) or set(returned) != expected:
-            raise ValueError(
-                "Round two must review every peer exactly once; "
-                f"expected={sorted(expected)}, returned={sorted(returned)}"
-            )
     return output
 
 
 def _validate_or_repair_citations(
     data: OneInvestorReasoningInput,
-    output: InvestorOutputT,
+    output: InvestorReasoningOutput,
     *,
-    output_schema: type[InvestorOutputT],
-    expected_round: int,
-    expected_peers: set[str] | None,
     model: str,
     verbose: bool,
-) -> InvestorOutputT:
+) -> InvestorReasoningOutput:
     """Validate citations and make at most one explicit correction attempt."""
 
     try:
         _validate_investor_output(
             data,
             output,
-            expected_round=expected_round,
-            expected_peers=expected_peers,
         )
         return output
     except CitationValidationError as error:
@@ -522,20 +502,18 @@ def _validate_or_repair_citations(
                 "citation_contract": _citation_contract(data),
                 "invalid_output": output.model_dump(mode="json"),
             },
-            output_schema=output_schema,
+            output_schema=InvestorReasoningOutput,
             model=model,
             verbose=verbose,
         )
         _validate_investor_output(
             data,
             repaired,
-            expected_round=expected_round,
-            expected_peers=expected_peers,
         )
         return repaired
 
 
-def run_round_one(
+def run_investor_reasoning(
     data: OneInvestorReasoningInput,
     *,
     model: str,
@@ -544,7 +522,7 @@ def run_round_one(
     output = run_structured_reasoning(
         role=f"{data.investor_id} mental-model investor",
         goal="Reach an independent, evidence-backed long-term view.",
-        instructions=ROUND_ONE_PROMPT,
+        instructions=INVESTOR_REASONING_PROMPT,
         context={
             "reasoning_data": data.model_dump(mode="json"),
             "citation_contract": _citation_contract(data),
@@ -556,58 +534,6 @@ def run_round_one(
     return _validate_or_repair_citations(
         data,
         output,
-        output_schema=InvestorReasoningOutput,
-        expected_round=1,
-        expected_peers=None,
-        model=model,
-        verbose=verbose,
-    )
-
-
-def run_round_two(
-    data: OneInvestorReasoningInput,
-    own_round_one: InvestorReasoningOutput,
-    peer_round_one: dict[str, InvestorReasoningOutput],
-    *,
-    model: str,
-    verbose: bool = False,
-) -> InvestorPeerReviewOutput:
-    if (
-        own_round_one.investor_id != data.investor_id
-        or own_round_one.round_number != 1
-    ):
-        raise ValueError("Round two requires the investor's own round one.")
-    for peer_id, peer_output in peer_round_one.items():
-        if (
-            peer_id == data.investor_id
-            or peer_output.investor_id != peer_id
-            or peer_output.round_number != 1
-        ):
-            raise ValueError("Round-two peer inputs are inconsistent.")
-
-    output = run_structured_reasoning(
-        role=f"{data.investor_id} peer-review investor",
-        goal="Challenge peer views through the investor's original models.",
-        instructions=ROUND_TWO_PROMPT,
-        context={
-            "reasoning_data": data.model_dump(mode="json"),
-            "own_round_one": own_round_one.model_dump(mode="json"),
-            "peer_round_one": {
-                investor_id: view.model_dump(mode="json")
-                for investor_id, view in peer_round_one.items()
-            },
-            "citation_contract": _citation_contract(data),
-        },
-        output_schema=InvestorPeerReviewOutput,
-        model=model,
-        verbose=verbose,
-    )
-    return _validate_or_repair_citations(
-        data,
-        output,
-        output_schema=InvestorPeerReviewOutput,
-        expected_round=2,
-        expected_peers=set(peer_round_one),
         model=model,
         verbose=verbose,
     )
@@ -616,7 +542,6 @@ def run_round_two(
 def run_cio_synthesis(
     data: CIOReasoningInput,
     *,
-    allowed_model_codes: set[str],
     model: str,
     verbose: bool = False,
 ) -> CIOReasoningOutput:
@@ -630,14 +555,8 @@ def run_cio_synthesis(
         verbose=verbose,
     )
 
-    if (
-        output.investment_horizon_min_years
-        != data.question.investment_horizon_min_years
-        or output.investment_horizon_max_years
-        != data.question.investment_horizon_max_years
-        or output.holding_policy != data.question.holding_policy
-    ):
-        raise ValueError("CIO changed the investment horizon.")
+    if output.holding_policy != data.question.holding_policy:
+        raise ValueError("CIO changed the holding policy.")
 
     allowed_evidence = set(
         _claim_map(data.micro_view, data.macro_view)
@@ -645,8 +564,14 @@ def run_cio_synthesis(
     unknown_evidence = (
         set(output.decisive_evidence_claim_ids) - allowed_evidence
     )
+    applied_model_codes = {
+        code
+        for investor_output in data.investor_outputs.values()
+        for inference in investor_output.mental_model_inferences
+        for code in inference.mental_model_codes
+    }
     unknown_models = (
-        set(output.decisive_mental_model_codes) - allowed_model_codes
+        set(output.decisive_mental_model_codes) - applied_model_codes
     )
     if unknown_evidence:
         raise ValueError(

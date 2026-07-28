@@ -9,6 +9,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    field_validator,
     model_validator,
 )
 
@@ -19,11 +20,7 @@ Stance = Literal[
     "mixed",
     "insufficient_information",
 ]
-HoldingPolicy = Literal[
-    "fixed_horizon",
-    "long_term",
-    "indefinite_while_thesis_valid",
-]
+HoldingPolicy = Literal["indefinite_while_thesis_valid"]
 ClaimStatus = Literal[
     "reported_fact",
     "derived_metric",
@@ -35,7 +32,7 @@ ClaimStatus = Literal[
 
 
 class InvestmentQuestion(BaseModel):
-    """Normalized value-investing decision and its intended horizon."""
+    """Normalized value-investing decision with a thesis-led holding policy."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -46,26 +43,11 @@ class InvestmentQuestion(BaseModel):
     decision_type: str = Field(min_length=2, max_length=100)
     as_of_date: date
 
-    investment_horizon_min_years: float = Field(default=2.0, ge=0.0)
-    investment_horizon_max_years: float | None = Field(default=None, ge=0.0)
     holding_policy: HoldingPolicy = "indefinite_while_thesis_valid"
 
     known_facts: list[str] = Field(default_factory=list, max_length=12)
     user_constraints: list[str] = Field(default_factory=list, max_length=10)
     uncertainties: list[str] = Field(default_factory=list, max_length=12)
-
-    @model_validator(mode="after")
-    def validate_horizon(self) -> InvestmentQuestion:
-        if (
-            self.investment_horizon_max_years is not None
-            and self.investment_horizon_max_years
-            < self.investment_horizon_min_years
-        ):
-            raise ValueError(
-                "Maximum investment horizon cannot be shorter than minimum."
-            )
-        return self
-
 
 class ResearchSource(BaseModel):
     """One source made available to the structured researcher."""
@@ -94,6 +76,80 @@ class EvidenceClaim(BaseModel):
     source_ids: list[str] = Field(default_factory=list, max_length=8)
     confidence: float = Field(ge=0.0, le=1.0)
     as_of_date: date | None = None
+
+
+def _disambiguate_duplicate_claim_ids(
+    value: object,
+    claim_fields: tuple[str, ...],
+) -> object:
+    """Re-key repeated LLM-generated IDs before strict view validation.
+
+    Every claim is retained. The first occurrence keeps its ID and later
+    occurrences receive a deterministic numeric suffix. All original IDs are
+    reserved up front so a repaired ID cannot collide with a valid later one.
+    """
+
+    if not isinstance(value, dict):
+        return value
+
+    def claim_id(claim: object) -> str | None:
+        if isinstance(claim, EvidenceClaim):
+            return claim.claim_id.strip()
+        if isinstance(claim, dict):
+            raw_id = claim.get("claim_id")
+            if isinstance(raw_id, str):
+                return raw_id.strip()
+        return None
+
+    reserved_ids: set[str] = set()
+    for field_name in claim_fields:
+        claims = value.get(field_name)
+        if not isinstance(claims, list):
+            continue
+        reserved_ids.update(
+            identifier
+            for claim in claims
+            if (identifier := claim_id(claim))
+        )
+
+    repaired_value = dict(value)
+    seen_ids: set[str] = set()
+    for field_name in claim_fields:
+        claims = value.get(field_name)
+        if not isinstance(claims, list):
+            continue
+
+        repaired_claims: list[object] = []
+        for claim in claims:
+            identifier = claim_id(claim)
+            if not identifier or identifier not in seen_ids:
+                if identifier:
+                    seen_ids.add(identifier)
+                repaired_claims.append(claim)
+                continue
+
+            suffix_number = 2
+            while True:
+                suffix = f"_{suffix_number}"
+                candidate = f"{identifier[: 120 - len(suffix)]}{suffix}"
+                if candidate not in reserved_ids:
+                    break
+                suffix_number += 1
+
+            reserved_ids.add(candidate)
+            seen_ids.add(candidate)
+            if isinstance(claim, EvidenceClaim):
+                repaired_claims.append(
+                    claim.model_copy(update={"claim_id": candidate})
+                )
+            else:
+                repaired_claim = dict(claim)
+                repaired_claim["claim_id"] = candidate
+                repaired_claims.append(repaired_claim)
+
+        repaired_value[field_name] = repaired_claims
+
+    return repaired_value
 
 
 def _validate_evidence(
@@ -163,6 +219,22 @@ class MicroView(BaseModel):
     unresolved_questions: list[str] = Field(default_factory=list, max_length=15)
     sources: list[ResearchSource] = Field(default_factory=list, max_length=30)
 
+    @model_validator(mode="before")
+    @classmethod
+    def disambiguate_claim_ids(cls, value: object) -> object:
+        return _disambiguate_duplicate_claim_ids(
+            value,
+            (
+                "business",
+                "business_quality",
+                "management_and_capital_allocation",
+                "financial_performance",
+                "balance_sheet_and_liquidity",
+                "valuation",
+                "risks_and_catalysts",
+            ),
+        )
+
     def all_claims(self) -> list[EvidenceClaim]:
         return [
             *self.business,
@@ -200,6 +272,18 @@ class MacroView(BaseModel):
     )
     unresolved_questions: list[str] = Field(default_factory=list, max_length=12)
     sources: list[ResearchSource] = Field(default_factory=list, max_length=25)
+
+    @model_validator(mode="before")
+    @classmethod
+    def disambiguate_claim_ids(cls, value: object) -> object:
+        return _disambiguate_duplicate_claim_ids(
+            value,
+            (
+                "environment",
+                "company_transmission_channels",
+                "regime_risks",
+            ),
+        )
 
     def all_claims(self) -> list[EvidenceClaim]:
         return [
@@ -246,9 +330,7 @@ class MentalModelBridge(BaseModel):
     investor_id: str | None = Field(default=None, max_length=100)
     normalised_question: str = Field(min_length=10, max_length=1600)
 
-    investment_horizon_min_years: float = Field(default=2.0, ge=0.0)
-    investment_horizon_max_years: float | None = Field(default=None, ge=0.0)
-    holding_policy: HoldingPolicy
+    holding_policy: HoldingPolicy = "indefinite_while_thesis_valid"
 
     analytical_question: str = Field(min_length=10, max_length=1000)
     search_query: str = Field(min_length=10, max_length=1400)
@@ -265,15 +347,6 @@ class MentalModelBridge(BaseModel):
 
     @model_validator(mode="after")
     def validate_bridge(self) -> MentalModelBridge:
-        if (
-            self.investment_horizon_max_years is not None
-            and self.investment_horizon_max_years
-            < self.investment_horizon_min_years
-        ):
-            raise ValueError(
-                "Maximum investment horizon cannot be shorter than minimum."
-            )
-
         claim_ids = [claim.claim_id for claim in self.retrieved_data]
         if len(claim_ids) != len(set(claim_ids)):
             raise ValueError("Bridge evidence claim IDs must be unique.")
@@ -333,17 +406,13 @@ class OneInvestorReasoningInput(BaseModel):
             bridge.normalised_question
             for bridge in self.mental_model_bridges
         }
-        horizons = {
-            (
-                bridge.investment_horizon_min_years,
-                bridge.investment_horizon_max_years,
-                bridge.holding_policy,
-            )
+        policies = {
+            bridge.holding_policy
             for bridge in self.mental_model_bridges
         }
-        if len(questions) != 1 or len(horizons) != 1:
+        if len(questions) != 1 or len(policies) != 1:
             raise ValueError(
-                "Every investor bridge must use the same question and horizon."
+                "Every investor bridge must use the same question and holding policy."
             )
         for bridge in self.mental_model_bridges:
             if bridge.investor_id != self.investor_id:
@@ -382,42 +451,30 @@ class MentalModelInference(BaseModel):
     missing_information: list[str] = Field(default_factory=list, max_length=6)
 
 
-class PeerReviewOutput(BaseModel):
-    """One round-two assessment of a peer's independent view."""
-
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-
-    peer_investor_id: str
-    agreements: list[str] = Field(default_factory=list, max_length=5)
-    disagreements: list[str] = Field(default_factory=list, max_length=5)
-    factual_disagreements: list[str] = Field(default_factory=list, max_length=4)
-    model_applicability_disagreements: list[str] = Field(
-        default_factory=list,
-        max_length=4,
-    )
-    weighting_disagreements: list[str] = Field(
-        default_factory=list,
-        max_length=4,
-    )
-    unresolved_questions: list[str] = Field(default_factory=list, max_length=5)
-
-
 class InvestorReasoningOutput(BaseModel):
-    """Independent first-round reasoning from one investor perspective."""
+    """Independent reasoning from one investor perspective."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    round_number: Literal[1]
     investor_id: str
     stance: Stance
-    thesis: str = Field(min_length=20, max_length=2600)
+    thesis: str = Field(
+        min_length=20,
+        max_length=2600,
+        description=(
+            "Self-contained investment view of at least 80 words, targeting "
+            "80–160 words, summarising the investor's stance, business "
+            "quality, valuation, decisive risk, and conditions for continued "
+            "ownership."
+        ),
+    )
     mental_model_inferences: list[MentalModelInference] = Field(
-        default_factory=list,
-        max_length=10,
+        min_length=3,
+        max_length=6,
     )
 
-    horizon_assessment: str = Field(min_length=3, max_length=1200)
-    suitable_for_indefinite_ownership: bool
+    thesis_durability_assessment: str = Field(min_length=3, max_length=1200)
+    suitable_while_thesis_valid: bool
     temporary_concerns: list[str] = Field(default_factory=list, max_length=6)
     permanent_loss_risks: list[str] = Field(default_factory=list, max_length=8)
     key_risks: list[str] = Field(default_factory=list, max_length=8)
@@ -429,22 +486,16 @@ class InvestorReasoningOutput(BaseModel):
 
     confidence: float = Field(ge=0.0, le=1.0)
 
+    @field_validator("thesis")
+    @classmethod
+    def validate_investment_view_length(cls, value: str) -> str:
+        """Keep the headline investor view useful when read in isolation."""
 
-class InvestorPeerReviewOutput(InvestorReasoningOutput):
-    """Second-round reasoning after reviewing the other investors' views."""
-
-    round_number: Literal[2]
-    peer_reviews: list[PeerReviewOutput] = Field(min_length=1, max_length=12)
-    changed_view: bool
-    reason_for_change: str | None = Field(max_length=1200)
-
-    @model_validator(mode="after")
-    def validate_change_reason(self) -> InvestorPeerReviewOutput:
-        if self.changed_view and not self.reason_for_change:
+        if len(value.split()) < 80:
             raise ValueError(
-                "A changed round-two view requires a reason for change."
+                "Investment view must contain at least 80 words."
             )
-        return self
+        return value
 
 
 class CIOReasoningInput(BaseModel):
@@ -455,21 +506,13 @@ class CIOReasoningInput(BaseModel):
     question: InvestmentQuestion
     micro_view: MicroView
     macro_view: MacroView
-    round_one_outputs: dict[str, InvestorReasoningOutput]
-    round_two_outputs: dict[str, InvestorPeerReviewOutput]
+    investor_outputs: dict[str, InvestorReasoningOutput]
 
     @model_validator(mode="after")
-    def validate_rounds(self) -> CIOReasoningInput:
-        for investor_id, output in self.round_one_outputs.items():
-            if output.investor_id != investor_id or output.round_number != 1:
-                raise ValueError("CIO round-one output map is inconsistent.")
-        for investor_id, output in self.round_two_outputs.items():
-            if output.investor_id != investor_id or output.round_number != 2:
-                raise ValueError("CIO round-two output map is inconsistent.")
-            if investor_id not in self.round_one_outputs:
-                raise ValueError(
-                    "CIO cannot receive round two without round one."
-                )
+    def validate_investor_outputs(self) -> CIOReasoningInput:
+        for investor_id, output in self.investor_outputs.items():
+            if output.investor_id != investor_id:
+                raise ValueError("CIO investor output map is inconsistent.")
         return self
 
 
@@ -490,8 +533,6 @@ class CIOReasoningOutput(BaseModel):
     final_answer: str = Field(min_length=20, max_length=3000)
     committee_synthesis: str = Field(min_length=20, max_length=2400)
 
-    investment_horizon_min_years: float = Field(ge=0.0)
-    investment_horizon_max_years: float | None = Field(default=None, ge=0.0)
     holding_policy: HoldingPolicy
 
     decisive_evidence_claim_ids: list[str] = Field(
@@ -517,8 +558,7 @@ class InvestmentCommitteeOutput(BaseModel):
     micro_view: MicroView
     macro_view: MacroView
     investor_reasoning_inputs: dict[str, OneInvestorReasoningInput]
-    round_one: dict[str, InvestorReasoningOutput]
-    round_two: dict[str, InvestorPeerReviewOutput]
+    investor_outputs: dict[str, InvestorReasoningOutput]
     cio: CIOReasoningOutput
     model_configuration: dict[str, str]
     embedding_identity: str

@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -22,41 +20,19 @@ from crew.agents import (
     research_macro_view,
     research_micro_view,
     run_cio_synthesis,
-    run_round_one,
-    run_round_two,
+    run_investor_reasoning,
 )
 from crew.config import reasoning_model
 from crew.retrieval import retrieve_for_bridges
 from crew.schemas import (
     CIOReasoningInput,
-    CIOReasoningOutput,
     InvestmentCommitteeOutput,
-    InvestmentQuestion,
-    InvestorPeerReviewOutput,
-    InvestorReasoningOutput,
-    MacroView,
-    MicroView,
     OneInvestorReasoningInput,
 )
 from mental_model_pipeline.canonical.embeddings import (
     create_embedding_provider,
 )
 from mental_model_pipeline.database.connection import engine
-
-
-CHECKPOINT_VERSION = 1
-
-
-@dataclass(frozen=True)
-class _CheckpointState:
-    question: InvestmentQuestion
-    micro_view: MicroView
-    macro_view: MacroView
-    investor_data: dict[str, OneInvestorReasoningInput]
-    round_one: dict[str, InvestorReasoningOutput]
-    round_two: dict[str, InvestorPeerReviewOutput]
-    cio: CIOReasoningOutput | None
-    embedding_identity: str
 
 
 class _TerminalSpinner:
@@ -144,8 +120,8 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Research an investment question, retrieve investor-specific "
-            "mental models, run two committee rounds, and synthesize a CIO "
-            "decision."
+            "mental models, collect independent investor views, and "
+            "synthesize a CIO decision."
         )
     )
     parser.add_argument("question", help="Investment question in quotes.")
@@ -183,33 +159,18 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--research-model")
     parser.add_argument("--bridge-model")
     parser.add_argument(
-        "--investor-round-one-model",
+        "--investor-model",
         "--analysis-model",
-        dest="investor_round_one_model",
-    )
-    parser.add_argument(
-        "--investor-round-two-model",
-        "--peer-review-model",
-        dest="investor_round_two_model",
+        dest="investor_model",
     )
     parser.add_argument("--cio-model")
 
-    parser.add_argument("--skip-round-two", action="store_true")
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help=(
             "Run normalization, structured research, bridge construction, and "
             "retrieval, but skip investor reasoning and CIO synthesis."
-        ),
-    )
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help=(
-            "Resume reasoning from the matching checkpoint beside output-path. "
-            "The question, research context, investors, retrieval settings, "
-            "and model configuration must match the original run."
         ),
     )
     parser.add_argument("--verbose", action="store_true")
@@ -219,8 +180,6 @@ def parse_arguments() -> argparse.Namespace:
         default=Path("data/processed/crew/committee_result.json"),
     )
     args = parser.parse_args()
-    if args.resume and args.dry_run:
-        parser.error("--resume and --dry-run cannot be used together.")
     return args
 
 
@@ -242,128 +201,6 @@ def _write_json(path: Path, value: dict) -> None:
     temporary.replace(path)
 
 
-def _checkpoint_path(output_path: Path) -> Path:
-    """Keep partial state separate from the completed committee artifact."""
-
-    return output_path.with_name(
-        f"{output_path.stem}.checkpoint{output_path.suffix}"
-    )
-
-
-def _checkpoint_request(
-    args: argparse.Namespace,
-    models: dict[str, str],
-    research_context: str | None,
-) -> dict[str, object]:
-    """Fingerprint every input that could alter a resumed committee run."""
-
-    context_bytes = (research_context or "").encode("utf-8")
-    return {
-        "question": args.question,
-        "research_context_sha256": hashlib.sha256(context_bytes).hexdigest(),
-        "investors": sorted(args.investor) if args.investor else None,
-        "top_k": args.top_k,
-        "neighbours": args.neighbours,
-        "skip_round_two": args.skip_round_two,
-        "model_configuration": models,
-    }
-
-
-def _write_checkpoint(
-    *,
-    output_path: Path,
-    status: str,
-    request: dict[str, object],
-    question: InvestmentQuestion,
-    micro_view: MicroView,
-    macro_view: MacroView,
-    investor_data: dict[str, OneInvestorReasoningInput],
-    round_one: dict[str, InvestorReasoningOutput],
-    round_two: dict[str, InvestorPeerReviewOutput],
-    embedding_identity: str,
-    cio: CIOReasoningOutput | None = None,
-) -> None:
-    """Atomically persist the last fully validated stage of a committee run."""
-
-    _write_json(
-        _checkpoint_path(output_path),
-        {
-            "checkpoint_version": CHECKPOINT_VERSION,
-            "status": status,
-            "request": request,
-            "question": question.model_dump(mode="json"),
-            "micro_view": micro_view.model_dump(mode="json"),
-            "macro_view": macro_view.model_dump(mode="json"),
-            "investor_reasoning_inputs": {
-                investor_id: data.model_dump(mode="json")
-                for investor_id, data in investor_data.items()
-            },
-            "round_one": {
-                investor_id: output.model_dump(mode="json")
-                for investor_id, output in round_one.items()
-            },
-            "round_two": {
-                investor_id: output.model_dump(mode="json")
-                for investor_id, output in round_two.items()
-            },
-            "cio": cio.model_dump(mode="json") if cio else None,
-            "embedding_identity": embedding_identity,
-        },
-    )
-
-
-def _load_checkpoint(
-    *,
-    output_path: Path,
-    expected_request: dict[str, object],
-) -> _CheckpointState:
-    """Load a checkpoint only when it belongs to this exact invocation."""
-
-    path = _checkpoint_path(output_path)
-    if not path.is_file():
-        raise FileNotFoundError(f"Committee checkpoint not found: {path}")
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("checkpoint_version") != CHECKPOINT_VERSION:
-        raise ValueError(
-            "Checkpoint version is incompatible with this crew runtime."
-        )
-    if payload.get("request") != expected_request:
-        raise ValueError(
-            "Checkpoint inputs do not match this invocation. Re-run without "
-            "--resume or restore the original options."
-        )
-
-    state = _CheckpointState(
-        question=InvestmentQuestion.model_validate(payload["question"]),
-        micro_view=MicroView.model_validate(payload["micro_view"]),
-        macro_view=MacroView.model_validate(payload["macro_view"]),
-        investor_data={
-            investor_id: OneInvestorReasoningInput.model_validate(data)
-            for investor_id, data in payload[
-                "investor_reasoning_inputs"
-            ].items()
-        },
-        round_one={
-            investor_id: InvestorReasoningOutput.model_validate(output)
-            for investor_id, output in payload.get("round_one", {}).items()
-        },
-        round_two={
-            investor_id: InvestorPeerReviewOutput.model_validate(output)
-            for investor_id, output in payload.get("round_two", {}).items()
-        },
-        cio=(
-            CIOReasoningOutput.model_validate(payload["cio"])
-            if payload.get("cio")
-            else None
-        ),
-        embedding_identity=payload["embedding_identity"],
-    )
-    investor_ids = set(state.investor_data)
-    if set(state.round_one) - investor_ids or set(state.round_two) - investor_ids:
-        raise ValueError("Checkpoint contains outputs for unknown investors.")
-    return state
-
-
 def _model_configuration(args: argparse.Namespace) -> dict[str, str]:
     return {
         "question": reasoning_model(
@@ -378,13 +215,9 @@ def _model_configuration(args: argparse.Namespace) -> dict[str, str]:
             "bridge",
             override=args.bridge_model,
         ),
-        "investor_round_one": reasoning_model(
-            "investor_round_one",
-            override=args.investor_round_one_model,
-        ),
-        "investor_round_two": reasoning_model(
-            "investor_round_two",
-            override=args.investor_round_two_model,
+        "investor": reasoning_model(
+            "investor",
+            override=args.investor_model,
         ),
         "cio": reasoning_model(
             "cio",
@@ -397,100 +230,77 @@ def main() -> int:
     args = parse_arguments()
     models = _model_configuration(args)
     research_context = _read_research_context(args.research_context)
-    checkpoint_request = _checkpoint_request(args, models, research_context)
+    print(
+        f"Normalising question with {models['question']}...",
+        flush=True,
+    )
+    question = normalise_question(
+        args.question,
+        model=models["question"],
+        verbose=args.verbose,
+    )
 
-    if args.resume:
-        state = _load_checkpoint(
-            output_path=args.output_path,
-            expected_request=checkpoint_request,
-        )
-        question = state.question
-        micro_view = state.micro_view
-        macro_view = state.macro_view
-        investor_data = state.investor_data
-        round_one = state.round_one
-        round_two = state.round_two
-        cio = state.cio
-        embedding_identity = state.embedding_identity
-        print(
-            f"Resuming from {_checkpoint_path(args.output_path)}: "
-            f"round_one={len(round_one)}, round_two={len(round_two)}.",
-            flush=True,
-        )
-    else:
-        print(
-            f"Normalising question with {models['question']}...",
-            flush=True,
-        )
-        question = normalise_question(
-            args.question,
-            model=models["question"],
-            verbose=args.verbose,
-        )
+    print(
+        f"Building MicroView with {models['research']}...",
+        flush=True,
+    )
+    micro_view = research_micro_view(
+        question,
+        research_context=research_context,
+        model=models["research"],
+        verbose=args.verbose,
+    )
 
-        print(
-            f"Building MicroView with {models['research']}...",
-            flush=True,
-        )
-        micro_view = research_micro_view(
-            question,
-            research_context=research_context,
-            model=models["research"],
-            verbose=args.verbose,
-        )
+    print(
+        f"Building MacroView with {models['research']}...",
+        flush=True,
+    )
+    macro_view = research_macro_view(
+        question,
+        micro_view,
+        research_context=research_context,
+        model=models["research"],
+        verbose=args.verbose,
+    )
 
-        print(
-            f"Building MacroView with {models['research']}...",
-            flush=True,
-        )
-        macro_view = research_macro_view(
-            question,
-            micro_view,
-            research_context=research_context,
-            model=models["research"],
-            verbose=args.verbose,
-        )
+    print(
+        f"Building mental-model data bridges with {models['bridge']}...",
+        flush=True,
+    )
+    base_bridges = build_mental_model_bridges(
+        question,
+        micro_view,
+        macro_view,
+        model=models["bridge"],
+        verbose=args.verbose,
+    )
 
-        print(
-            f"Building mental-model data bridges with {models['bridge']}...",
-            flush=True,
-        )
-        base_bridges = build_mental_model_bridges(
-            question,
-            micro_view,
-            macro_view,
-            model=models["bridge"],
-            verbose=args.verbose,
-        )
+    # Retrieval reads canonical mental models directly from PostgreSQL.
+    _ensure_database_running()
+    embedding_provider = create_embedding_provider()
+    embedding_identity = embedding_provider.identity
+    print(
+        f"Retrieving mental models with {embedding_identity}...",
+        flush=True,
+    )
+    retrieved = retrieve_for_bridges(
+        base_bridges,
+        investor_filter=set(args.investor) if args.investor else None,
+        top_k=args.top_k,
+        neighbour_limit=args.neighbours,
+        embedding_provider=embedding_provider,
+    )
 
-        # Retrieval reads canonical mental models directly from PostgreSQL.
-        _ensure_database_running()
-        embedding_provider = create_embedding_provider()
-        embedding_identity = embedding_provider.identity
-        print(
-            f"Retrieving mental models with {embedding_identity}...",
-            flush=True,
+    investor_data = {
+        investor_id: OneInvestorReasoningInput(
+            investor_id=investor_id,
+            micro_view=micro_view,
+            macro_view=macro_view,
+            mental_model_bridges=bridges,
         )
-        retrieved = retrieve_for_bridges(
-            base_bridges,
-            investor_filter=set(args.investor) if args.investor else None,
-            top_k=args.top_k,
-            neighbour_limit=args.neighbours,
-            embedding_provider=embedding_provider,
-        )
-
-        investor_data = {
-            investor_id: OneInvestorReasoningInput(
-                investor_id=investor_id,
-                micro_view=micro_view,
-                macro_view=macro_view,
-                mental_model_bridges=bridges,
-            )
-            for investor_id, bridges in retrieved.items()
-        }
-        round_one = {}
-        round_two = {}
-        cio = None
+        for investor_id, bridges in retrieved.items()
+    }
+    investor_outputs = {}
 
     for investor_id, data in investor_data.items():
         unique_codes = {
@@ -515,8 +325,7 @@ def main() -> int:
                     investor_id: data.model_dump(mode="json")
                     for investor_id, data in investor_data.items()
                 },
-                "round_one": {},
-                "round_two": {},
+                "investor_outputs": {},
                 "cio": None,
                 "model_configuration": models,
                 "embedding_identity": embedding_identity,
@@ -528,91 +337,36 @@ def main() -> int:
         )
         return 0
 
-    def save_checkpoint(status: str) -> None:
-        _write_checkpoint(
-            output_path=args.output_path,
-            status=status,
-            request=checkpoint_request,
-            question=question,
-            micro_view=micro_view,
-            macro_view=macro_view,
-            investor_data=investor_data,
-            round_one=round_one,
-            round_two=round_two,
-            cio=cio,
-            embedding_identity=embedding_identity,
-        )
-
-    if not args.resume:
-        save_checkpoint("retrieval_complete")
-
     total = len(investor_data)
     for number, (investor_id, data) in enumerate(
         investor_data.items(),
         start=1,
     ):
-        if investor_id in round_one:
-            continue
-        print(f"Round 1 {number}/{total}: {investor_id}...", flush=True)
-        round_one[investor_id] = run_round_one(
+        print(f"Investor {number}/{total}: {investor_id}...", flush=True)
+        investor_outputs[investor_id] = run_investor_reasoning(
             data,
-            model=models["investor_round_one"],
+            model=models["investor"],
             verbose=args.verbose,
         )
-        save_checkpoint(f"round_one_{len(round_one)}_of_{total}")
-
-    if not args.skip_round_two and len(round_one) > 1:
-        for number, (investor_id, data) in enumerate(
-            investor_data.items(),
-            start=1,
-        ):
-            if investor_id in round_two:
-                continue
-            print(f"Round 2 {number}/{total}: {investor_id}...", flush=True)
-            peers = {
-                peer_id: view
-                for peer_id, view in round_one.items()
-                if peer_id != investor_id
-            }
-            round_two[investor_id] = run_round_two(
-                data,
-                round_one[investor_id],
-                peers,
-                model=models["investor_round_two"],
-                verbose=args.verbose,
-            )
-            save_checkpoint(f"round_two_{len(round_two)}_of_{total}")
-
-    if cio is None:
-        print(f"CIO synthesis with {models['cio']}...", flush=True)
-        cio_data = CIOReasoningInput(
-            question=question,
-            micro_view=micro_view,
-            macro_view=macro_view,
-            round_one_outputs=round_one,
-            round_two_outputs=round_two,
-        )
-        allowed_model_codes = {
-            candidate.canonical_code
-            for data in investor_data.values()
-            for bridge in data.mental_model_bridges
-            for candidate in bridge.mental_model_candidates
-        }
-        cio = run_cio_synthesis(
-            cio_data,
-            allowed_model_codes=allowed_model_codes,
-            model=models["cio"],
-            verbose=args.verbose,
-        )
-        save_checkpoint("committee_complete")
+    print(f"CIO synthesis with {models['cio']}...", flush=True)
+    cio_data = CIOReasoningInput(
+        question=question,
+        micro_view=micro_view,
+        macro_view=macro_view,
+        investor_outputs=investor_outputs,
+    )
+    cio = run_cio_synthesis(
+        cio_data,
+        model=models["cio"],
+        verbose=args.verbose,
+    )
 
     result = InvestmentCommitteeOutput(
         question=question,
         micro_view=micro_view,
         macro_view=macro_view,
         investor_reasoning_inputs=investor_data,
-        round_one=round_one,
-        round_two=round_two,
+        investor_outputs=investor_outputs,
         cio=cio,
         model_configuration=models,
         embedding_identity=embedding_identity,

@@ -28,14 +28,7 @@ STAGE_MODEL_VARIABLES = {
     "question": ("QUESTION_MODEL", "QUESTION_NORMALISER_MODEL"),
     "research": ("RESEARCH_MODEL",),
     "bridge": ("BRIDGE_MODEL",),
-    "investor_round_one": (
-        "INVESTOR_ROUND_ONE_MODEL",
-        "INVESTOR_ANALYSIS_MODEL",
-    ),
-    "investor_round_two": (
-        "INVESTOR_ROUND_TWO_MODEL",
-        "PEER_REVIEW_MODEL",
-    ),
+    "investor": ("INVESTOR_MODEL", "INVESTOR_ANALYSIS_MODEL"),
     "cio": ("CIO_MODEL",),
 }
 

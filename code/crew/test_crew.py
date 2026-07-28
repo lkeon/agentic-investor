@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import unittest
 from datetime import date
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -20,20 +18,18 @@ from crew.agents import (
     _validate_investor_output,
     build_mental_model_bridges,
     research_macro_view,
-    run_round_one,
+    run_cio_synthesis,
+    run_investor_reasoning,
 )
 from crew.config import qualify_reasoning_model
 from crew.retrieval import _build_adjacency, _normalise
-from crew.run_crew import (
-    _ensure_database_running,
-    _load_checkpoint,
-    _write_checkpoint,
-)
+from crew.run_crew import _ensure_database_running
 from crew.schemas import (
+    CIOReasoningInput,
+    CIOReasoningOutput,
     EvidenceClaim,
     InvestmentQuestion,
     OneInvestorReasoningInput,
-    InvestorPeerReviewOutput,
     InvestorReasoningOutput,
     MentalModelInference,
     MacroView,
@@ -41,7 +37,6 @@ from crew.schemas import (
     MentalModelBridge,
     MentalModelBridgeList,
     MicroView,
-    PeerReviewOutput,
     ResearchSource,
 )
 
@@ -115,12 +110,6 @@ def _bridge(*, candidate: bool = True) -> MentalModelBridge:
         bridge_id="valuation",
         investor_id="buffett" if candidate else None,
         normalised_question=question.normalised_question,
-        investment_horizon_min_years=(
-            question.investment_horizon_min_years
-        ),
-        investment_horizon_max_years=(
-            question.investment_horizon_max_years
-        ),
         holding_policy=question.holding_policy,
         analytical_question=(
             "Does the current valuation provide a margin of safety?"
@@ -151,10 +140,23 @@ def _output(
     evidence_id: str = "micro_valuation_1",
 ) -> InvestorReasoningOutput:
     return InvestorReasoningOutput(
-        round_number=1,
         investor_id="buffett",
         stance="mixed",
-        thesis="The valuation evidence remains incomplete for a decision.",
+        thesis=(
+            "The supplied evidence does not yet support an investment "
+            "decision. The reported valuation multiple alone does not "
+            "establish normalized owner earnings, intrinsic value, or an "
+            "adequate margin of safety. Business durability, competitive "
+            "economics, balance-sheet resilience, and management's capital-"
+            "allocation record also remain insufficiently evidenced. From a "
+            "Buffett perspective, uncertainty about these core microeconomic "
+            "factors outweighs any provisional attraction in the headline "
+            "valuation. The appropriate stance is therefore mixed and patient "
+            "rather than affirmative. The company could become suitable for "
+            "indefinite ownership only after durable economics, conservative "
+            "financing, trustworthy stewardship, and a meaningful discount "
+            "to conservatively estimated value are demonstrated."
+        ),
         mental_model_inferences=[
             MentalModelInference(
                 conclusion="A margin of safety is not yet established.",
@@ -162,43 +164,41 @@ def _output(
                 mental_model_codes=[code],
                 evidence_claim_ids=[evidence_id],
                 applicability="uncertain",
-            )
+            ),
+            MentalModelInference(
+                conclusion="Business durability remains unverified.",
+                reasoning=(
+                    "The supplied evidence does not establish durable "
+                    "competitive economics."
+                ),
+                mental_model_codes=[code],
+                evidence_claim_ids=[evidence_id],
+                applicability="uncertain",
+            ),
+            MentalModelInference(
+                conclusion="Permanent-loss exposure cannot yet be bounded.",
+                reasoning=(
+                    "One valuation observation does not establish financial "
+                    "resilience or downside protection."
+                ),
+                mental_model_codes=[code],
+                evidence_claim_ids=[evidence_id],
+                applicability="uncertain",
+            ),
         ],
-        horizon_assessment="The evidence is insufficient for a long hold.",
-        suitable_for_indefinite_ownership=False,
+        thesis_durability_assessment=(
+            "The evidence is insufficient to support indefinite ownership."
+        ),
+        suitable_while_thesis_valid=False,
         missing_information=["Normalized owner earnings"],
         confidence=0.3,
     )
-
-
-def _round_two_output(
-    *,
-    peer_ids: list[str] | None = None,
-) -> InvestorPeerReviewOutput:
-    peer_ids = peer_ids or ["marks"]
-    return InvestorPeerReviewOutput(
-        **_output().model_dump(exclude={"round_number"}),
-        round_number=2,
-        peer_reviews=[
-            PeerReviewOutput(peer_investor_id=investor_id)
-            for investor_id in peer_ids
-        ],
-        changed_view=False,
-        reason_for_change=None,
-    )
-
-
 class SchemaTests(unittest.TestCase):
-    def test_question_rejects_inverted_horizon(self) -> None:
-        with self.assertRaises(ValidationError):
-            InvestmentQuestion(
-                original_question="Should I buy X?",
-                normalised_question="Should a long-term investor buy X?",
-                decision_type="buy",
-                as_of_date=TODAY,
-                investment_horizon_min_years=5,
-                investment_horizon_max_years=2,
-            )
+    def test_question_defaults_to_indefinite_thesis_policy(self) -> None:
+        self.assertEqual(
+            _question().holding_policy,
+            "indefinite_while_thesis_valid",
+        )
 
     def test_sourced_claim_requires_known_source(self) -> None:
         with self.assertRaises(ValidationError):
@@ -207,6 +207,70 @@ class SchemaTests(unittest.TestCase):
                 as_of_date=TODAY,
                 valuation=[_evidence()],
             )
+
+    def test_micro_view_rekeys_duplicate_claim_ids_without_data_loss(
+        self,
+    ) -> None:
+        first = _evidence().model_copy(
+            update={"status": "unknown", "source_ids": []}
+        )
+        duplicate = first.model_copy(
+            update={"statement": "A second, distinct valuation observation."}
+        )
+        reserved = first.model_copy(
+            update={
+                "claim_id": "micro_valuation_1_2",
+                "statement": "An observation whose original ID is reserved.",
+            }
+        )
+
+        # CrewAI hands Pydantic decoded JSON dictionaries, so exercise that
+        # exact validation boundary rather than only model-instance inputs.
+        view = MicroView.model_validate(
+            {
+                "company_name": "Example",
+                "as_of_date": TODAY.isoformat(),
+                "business": [first.model_dump(mode="json")],
+                "business_quality": [duplicate.model_dump(mode="json")],
+                "valuation": [reserved.model_dump(mode="json")],
+            }
+        )
+
+        self.assertEqual(
+            [claim.claim_id for claim in view.all_claims()],
+            [
+                "micro_valuation_1",
+                "micro_valuation_1_3",
+                "micro_valuation_1_2",
+            ],
+        )
+        self.assertEqual(
+            [claim.statement for claim in view.all_claims()],
+            [first.statement, duplicate.statement, reserved.statement],
+        )
+
+    def test_macro_view_rekeys_duplicate_claim_ids(self) -> None:
+        first = _evidence().model_copy(
+            update={
+                "claim_id": "macro_rates_1",
+                "status": "unknown",
+                "source_ids": [],
+            }
+        )
+        duplicate = first.model_copy(
+            update={"statement": "A distinct rates transmission observation."}
+        )
+
+        view = MacroView(
+            as_of_date=TODAY,
+            environment=[first],
+            regime_risks=[duplicate],
+        )
+
+        self.assertEqual(
+            [claim.claim_id for claim in view.all_claims()],
+            ["macro_rates_1", "macro_rates_1_2"],
+        )
 
     def test_reasoning_model_accepts_provider_qualified_name(self) -> None:
         self.assertEqual(
@@ -225,24 +289,35 @@ class SchemaTests(unittest.TestCase):
         self.assertEqual(schema["type"], "object")
         self.assertEqual(schema["properties"]["bridges"]["type"], "array")
 
-    def test_round_one_schema_excludes_peer_review_fields(self) -> None:
+    def test_investor_schema_contains_only_independent_output_fields(self) -> None:
         schema = InvestorReasoningOutput.model_json_schema()
-        self.assertEqual(schema["properties"]["round_number"]["const"], 1)
-        self.assertNotIn("peer_reviews", schema["properties"])
+        self.assertNotIn("round_number", schema["properties"])
         self.assertNotIn("changed_view", schema["properties"])
 
-    def test_round_one_rejects_a_change_field(self) -> None:
+    def test_investor_schema_rejects_a_change_field(self) -> None:
         payload = _output().model_dump()
         payload["changed_view"] = False
         with self.assertRaises(ValidationError):
             InvestorReasoningOutput.model_validate(payload)
 
-    def test_round_two_schema_requires_peer_review_fields(self) -> None:
-        schema = InvestorPeerReviewOutput.model_json_schema()
-        self.assertEqual(schema["properties"]["round_number"]["const"], 2)
-        self.assertIn("peer_reviews", schema["required"])
-        self.assertIn("changed_view", schema["required"])
-        self.assertIn("reason_for_change", schema["required"])
+    def test_investor_schema_requires_three_reasoning_inferences(self) -> None:
+        payload = _output().model_dump()
+        payload["mental_model_inferences"] = payload[
+            "mental_model_inferences"
+        ][:2]
+        with self.assertRaises(ValidationError):
+            InvestorReasoningOutput.model_validate(payload)
+
+    def test_investor_schema_requires_substantive_investment_view(self) -> None:
+        payload = _output().model_dump()
+        payload["thesis"] = (
+            "The valuation evidence remains incomplete for a decision."
+        )
+        with self.assertRaisesRegex(
+            ValidationError,
+            "Investment view must contain at least 80 words",
+        ):
+            InvestorReasoningOutput.model_validate(payload)
 
 
 class DatabaseStartupTests(unittest.TestCase):
@@ -267,57 +342,6 @@ class DatabaseStartupTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-
-
-class CheckpointTests(unittest.TestCase):
-    def test_checkpoint_round_trip_preserves_validated_reasoning_state(
-        self,
-    ) -> None:
-        request = {"question": "Should I buy Example Company?"}
-        with TemporaryDirectory() as directory:
-            output_path = Path(directory) / "result.json"
-            _write_checkpoint(
-                output_path=output_path,
-                status="round_one_1_of_1",
-                request=request,
-                question=_question(),
-                micro_view=_micro(),
-                macro_view=MacroView(as_of_date=TODAY),
-                investor_data={"buffett": _reasoning_data()},
-                round_one={"buffett": _output()},
-                round_two={},
-                embedding_identity="openai/example/1",
-            )
-
-            state = _load_checkpoint(
-                output_path=output_path,
-                expected_request=request,
-            )
-
-        self.assertEqual(set(state.round_one), {"buffett"})
-        self.assertEqual(state.embedding_identity, "openai/example/1")
-
-    def test_checkpoint_rejects_different_invocation(self) -> None:
-        with TemporaryDirectory() as directory:
-            output_path = Path(directory) / "result.json"
-            _write_checkpoint(
-                output_path=output_path,
-                status="retrieval_complete",
-                request={"question": "Question A"},
-                question=_question(),
-                micro_view=_micro(),
-                macro_view=MacroView(as_of_date=TODAY),
-                investor_data={"buffett": _reasoning_data()},
-                round_one={},
-                round_two={},
-                embedding_identity="openai/example/1",
-            )
-
-            with self.assertRaises(ValueError):
-                _load_checkpoint(
-                    output_path=output_path,
-                    expected_request={"question": "Question B"},
-                )
 
 
 class BridgeTests(unittest.TestCase):
@@ -459,7 +483,6 @@ class OutputGuardrailTests(unittest.TestCase):
             _validate_investor_output(
                 _reasoning_data(),
                 _output(evidence_id="REG-REG-04"),
-                expected_round=1,
             )
 
     def test_unknown_mental_model_code_is_rejected(self) -> None:
@@ -467,28 +490,26 @@ class OutputGuardrailTests(unittest.TestCase):
             _validate_investor_output(
                 _reasoning_data(),
                 _output(code="invented_code"),
-                expected_round=1,
             )
 
-    def test_valid_round_one_output_passes(self) -> None:
+    def test_valid_investor_output_passes(self) -> None:
         output = _output()
         self.assertIs(
             _validate_investor_output(
                 _reasoning_data(),
                 output,
-                expected_round=1,
             ),
             output,
         )
 
-    def test_round_one_repairs_invalid_citation_once(self) -> None:
+    def test_investor_reasoning_repairs_invalid_citation_once(self) -> None:
         invalid = _output(evidence_id="REG-REG-04")
         valid = _output()
         with patch(
             "crew.agents.run_structured_reasoning",
             side_effect=[invalid, valid],
         ) as reasoning:
-            result = run_round_one(
+            result = run_investor_reasoning(
                 _reasoning_data(),
                 model="openai/example",
             )
@@ -503,28 +524,50 @@ class OutputGuardrailTests(unittest.TestCase):
             "unknown evidence IDs=['REG-REG-04']",
         )
 
-    def test_round_one_stops_after_one_failed_repair(self) -> None:
+    def test_investor_reasoning_stops_after_one_failed_repair(self) -> None:
         invalid = _output(evidence_id="REG-REG-04")
         with patch(
             "crew.agents.run_structured_reasoning",
             side_effect=[invalid, invalid],
         ) as reasoning:
             with self.assertRaises(CitationValidationError):
-                run_round_one(
+                run_investor_reasoning(
                     _reasoning_data(),
                     model="openai/example",
                 )
 
         self.assertEqual(reasoning.call_count, 2)
 
-    def test_round_two_must_review_every_peer(self) -> None:
-        with self.assertRaises(ValueError):
-            _validate_investor_output(
-                _reasoning_data(),
-                _round_two_output(peer_ids=["marks"]),
-                expected_round=2,
-                expected_peers={"marks", "munger"},
-            )
+    def test_cio_rejects_a_model_not_applied_by_an_investor(self) -> None:
+        cio_input = CIOReasoningInput(
+            question=_question(),
+            micro_view=_micro(),
+            macro_view=MacroView(as_of_date=TODAY),
+            investor_outputs={"buffett": _output()},
+        )
+        cio_output = CIOReasoningOutput(
+            decision="insufficient_information",
+            final_answer=(
+                "The supplied information is insufficient to establish a "
+                "margin of safety."
+            ),
+            committee_synthesis=(
+                "The independent view requires normalized owner earnings "
+                "before valuation can be assessed."
+            ),
+            holding_policy="indefinite_while_thesis_valid",
+            decisive_mental_model_codes=["mmc_not_applied_12345678"],
+            confidence=0.2,
+        )
+        with patch(
+            "crew.agents.run_structured_reasoning",
+            return_value=cio_output,
+        ):
+            with self.assertRaises(ValueError):
+                run_cio_synthesis(
+                    cio_input,
+                    model="openai/example",
+                )
 
 
 if __name__ == "__main__":

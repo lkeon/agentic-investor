@@ -1,71 +1,91 @@
-# Investment Committee Chainlit frontend
+# Investment Committee frontend
 
-A minimal local frontend for testing the investment-committee user experience.
-It runs in mock mode and requires no database, CrewAI connection, or LLM key.
+This Streamlit application is the product interface for the structured
+value-investing committee in `code/crew`.
 
-## Run locally on Fedora/Linux
+## Product flow
 
-From this folder:
+The interface presents two decision stages:
+
+1. independent investor perspectives with a self-contained investment view of
+   at least 80 words, retrieved models, applied models, 3–6 material
+   inferences, risks, and evidence joined directly to the conclusion it
+   supports;
+2. a structured CIO decision comparing those views and identifying the
+   decisive evidence, mental models, conditions, and information gaps.
+
+It also provides:
+
+- investment-question and optional research input;
+- selection of every available investor perspective;
+- compact mental-model retrieval controls;
+- an always-visible, plain-language diligence timeline beneath the run controls;
+- an optional scrollable technical stream retaining raw CrewAI, model,
+  validation, database, and Python output;
+- automatic display of the latest valid completed result;
+- Markdown and validated JSON downloads;
+- an on-demand, stage-by-stage viewer for retained Pydantic-compatible inputs
+  and outputs;
+- a Stop control that terminates the active local crew process;
+- cited evidence and source references embedded inside investor and CIO
+  reasoning, with complete records retained in structured output and downloads.
+
+Selecting **Show technical execution log** also runs CrewAI in verbose mode.
+The interface retains up to 8,000 technical lines without removing CrewAI
+trace panels. When a run fails, the technical window is displayed
+automatically even if verbose logging was not selected.
+
+The MVP does not perform live web research. It treats the output as decision
+support rather than personalised financial advice. It has no fixed holding
+period: the product supports continued ownership only while the core business
+thesis remains valid. Macro is shown as a secondary condition and matters only
+when it has a direct, material effect on that thesis.
+
+## Run
+
+From the repository root:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-chainlit run app.py -w
+source .venvinv/bin/activate
+cd code/frontend
+python -m streamlit run app.py
 ```
 
-Open `http://localhost:8000` if the browser does not open automatically.
+Open the local URL printed by Streamlit, normally
+`http://localhost:8501`.
 
-## What the mock demonstrates
-
-- One-question input
-- Mental-model retrieval step
-- Independent Buffett, Marks, and Flatt assessments
-- Committee debate
-- Final synthesis with references
-- A stacked layout that remains usable on mobile-width browsers
-
-## Connect the existing CrewAI workflow
-
-Keep `app.py` unchanged and replace the body of `run_committee()` in
-`committee_service.py`.
-
-Return a `CommitteeResult` containing:
-
-```python
-CommitteeResult(
-    mental_models=["..."],
-    perspectives=[
-        InvestorPerspective(investor="Warren Buffett", assessment="..."),
-    ],
-    debate=[
-        DebatePoint(speaker="Howard Marks", argument="..."),
-    ],
-    conclusion="...",
-    sources=["..."],
-)
-```
-
-If your existing `run_crew(question)` function is synchronous, call it without
-blocking Chainlit's event loop:
-
-```python
-raw_result = await asyncio.to_thread(run_crew, question)
-```
-
-Then map `raw_result` into the `CommitteeResult` structure above.
-
-## Suggested repository location
+The frontend writes completed results to:
 
 ```text
-code/
-├── crew/
-├── frontend/
-│   ├── .chainlit/config.toml
-│   ├── public/stylesheet.css
-│   ├── app.py
-│   ├── committee_service.py
-│   ├── requirements.txt
-│   └── README.md
-└── vis/
+data/processed/crew/committee_result.json
+```
+
+## Runtime requirements
+
+- Python 3.13 with the root `requirements.txt` installed;
+- a root `.env` containing valid `OPENAI_API_KEY` and `DATABASE_URL`;
+- PostgreSQL containing the canonical mental-model data;
+- permission to run `systemctl start postgresql` when the configured database
+  is unavailable.
+
+## Validation
+
+From the repository root, run the committee contracts:
+
+```bash
+PYTHONPATH=code python -m unittest crew.test_crew -v
+```
+
+Render the frontend without starting a paid committee run:
+
+```bash
+cd code/frontend
+python - <<'PY'
+from streamlit.testing.v1 import AppTest
+
+app = AppTest.from_file("app.py")
+app.run()
+assert not app.exception
+print("Frontend render check passed")
+PY
 ```
