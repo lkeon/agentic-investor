@@ -433,14 +433,14 @@ def _render_input() -> object:
         with st.expander("Diligence Room Settings", expanded=False):
             preferred = [
                 investor
-                for investor in ("buffett", "marks", "flatt")
+                for investor in ("buffett", "munger")
                 if investor in available
             ]
             investors = st.pills(
                 "Investor perspectives",
                 options=available,
                 selection_mode="multi",
-                default=preferred or available[:3],
+                default=preferred or available[:2],
                 format_func=display_name,
                 width="stretch",
             )
