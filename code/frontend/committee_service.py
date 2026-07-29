@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, MutableMapping
 from dataclasses import dataclass
 import json
 import os
@@ -11,8 +11,11 @@ import re
 import signal
 import subprocess
 import sys
+import time
 from tempfile import NamedTemporaryFile
 from threading import Lock
+
+from sqlalchemy.exc import SQLAlchemyError
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -26,6 +29,8 @@ _ACTIVE_PROCESS: subprocess.Popen[str] | None = None
 _STOPPED_PROCESS_IDS: set[int] = set()
 MAX_TECHNICAL_LOG_LINES = 8000
 STREAMLIT_CLOUD_MODE = "streamlit_cloud"
+DEFAULT_INVESTOR_DISCOVERY_ATTEMPTS = 5
+INVESTOR_SESSION_KEY = "available_investors"
 
 
 def _is_streamlit_cloud() -> bool:
@@ -60,6 +65,30 @@ class CommitteeStopped(CommitteeRunError):
 
 class InvestorDiscoveryError(RuntimeError):
     """Raised when a hosted app cannot discover usable database investors."""
+
+
+def _database_query_with_retries(
+    operation: Callable[[], set[str]],
+) -> set[str]:
+    """Run a small read query with bounded backoff for cold hosted databases."""
+
+    raw_attempts = os.getenv(
+        "INVESTOR_DISCOVERY_ATTEMPTS",
+        str(DEFAULT_INVESTOR_DISCOVERY_ATTEMPTS),
+    )
+    try:
+        attempts = max(1, min(8, int(raw_attempts)))
+    except ValueError:
+        attempts = DEFAULT_INVESTOR_DISCOVERY_ATTEMPTS
+
+    for attempt in range(attempts):
+        try:
+            return operation()
+        except SQLAlchemyError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(min(0.5 * (2**attempt), 4.0))
+    raise AssertionError("Database retry loop exited unexpectedly.")
 
 
 def _terminate_process(process: subprocess.Popen[str]) -> None:
@@ -100,7 +129,6 @@ def _discover_investors_from_database() -> set[str]:
         sys.path.insert(0, str(CODE_ROOT))
     try:
         from sqlalchemy import select
-        from sqlalchemy.exc import SQLAlchemyError
 
         from mental_model_pipeline.canonical.db_models import (
             CanonicalMentalModelDB,
@@ -119,7 +147,7 @@ def _discover_investors_from_database() -> set[str]:
         # canonical export or the minimal fallback below.
         return set()
 
-    try:
+    def query() -> set[str]:
         with SessionLocal() as session:
             return {
                 investor_id.strip()
@@ -136,6 +164,9 @@ def _discover_investors_from_database() -> set[str]:
                 )
                 if investor_id and investor_id.strip()
             }
+
+    try:
+        return _database_query_with_retries(query)
     except SQLAlchemyError as error:
         if _is_streamlit_cloud():
             raise InvestorDiscoveryError(
@@ -178,6 +209,19 @@ def discover_investors() -> list[str]:
                 if isinstance(investor_id, str) and investor_id.strip():
                     investors.add(investor_id.strip())
     return sorted(investors) or ["buffett", "flatt", "marks"]
+
+
+def available_investors_for_session(
+    session_state: MutableMapping[str, object],
+) -> list[str]:
+    """Discover investors once and retain them for this browser session."""
+
+    existing = session_state.get(INVESTOR_SESSION_KEY)
+    if isinstance(existing, list) and existing:
+        return list(existing)
+    investors = discover_investors()
+    session_state[INVESTOR_SESSION_KEY] = investors
+    return list(investors)
 
 
 def load_latest_result() -> dict[str, object] | None:
