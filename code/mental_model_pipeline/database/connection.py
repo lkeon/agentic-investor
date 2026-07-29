@@ -23,6 +23,11 @@ if not DATABASE_URL:
 engine = create_engine(
     DATABASE_URL,
     echo=False,
+    # Hosted PostgreSQL services can close idle pooled connections. Validate a
+    # connection before reuse and recycle it periodically so Streamlit reruns
+    # and long committee executions do not inherit a stale socket.
+    pool_pre_ping=True,
+    pool_recycle=300,
 )
 
 SessionLocal = sessionmaker(

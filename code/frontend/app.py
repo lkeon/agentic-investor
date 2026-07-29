@@ -22,7 +22,7 @@ from committee_service import (
     CommitteeStopped,
     InvestorDiscoveryError,
     ProgressUpdate,
-    discover_investors,
+    available_investors_for_session,
     display_name,
     load_latest_result,
     run_committee,
@@ -46,9 +46,8 @@ DECISION_LABELS = {
 }
 
 
-@st.cache_data(show_spinner=False, ttl=60)
 def _available_investors() -> list[str]:
-    return discover_investors()
+    return available_investors_for_session(st.session_state)
 
 
 @st.cache_data(show_spinner=False)
@@ -322,7 +321,7 @@ def _render_input() -> object:
     st.markdown(
         """
         <div class="intro-block">
-          <h1>Test investment theses through the established mental models of renowned investors</h1>
+          <h1>Test your investment thesis against the mental models of renowned investors.</h1>
         </div>
         """,
         unsafe_allow_html=True,
