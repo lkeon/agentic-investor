@@ -457,10 +457,9 @@ def _render_input() -> object:
                     through its own retrieved model set.
 
                     Explore the underlying fragments, MMCs, and their network
-                    connections in the [Agentic Investor mental-model
-                    explorer](https://agentic-investor.streamlit.app/).
+                    connections in the [Mental Model Explorer](https://mentalmodelexplorer.streamlit.app/).
 
-                    Finally, the CIO compares the perspectives and produces a
+                    Finally, the CIO compares the individual investors' perspectives and produces a
                     structured decision, confidence level, key conditions, and
                     unresolved evidence needs. The Room does not manufacture
                     missing facts: uncertainty remains visible for you to
@@ -1444,13 +1443,11 @@ def _render_about_project() -> None:
             use them as reasoning guardrails. It is also an educational space
             for value investors who want to explore how great investors assess
             a business. You can inspect the underlying fragments, canonical
-            mental models, and their relationships in the [Agentic Investor
-            mental-model explorer](https://agentic-investor.streamlit.app/).
+            mental models, and their relationships in the [Mental Model Explorer]
+            (https://mentalmodelexplorer.streamlit.app/).
 
-            I’m Leon Kocjancic. I’m interested in investing across different
-            horizons, including long and potentially indefinite ownership,
-            where business value, durable moats, and management quality remain
-            the prevailing factors.
+            The investment framework used herein partly draws on the ME–ME–ME 
+            approach taught as part of the LSE Finance programme.
             """
         )
 
