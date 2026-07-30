@@ -6,14 +6,18 @@ independent, mental-model-based investor views and one structured CIO decision.
 ## Workflow
 
 1. Normalise the question and thesis-led holding policy.
-2. Build an evidence-only company `MicroView`.
-3. Build a company-relevant `MacroView`.
-4. Create 1–6 focused `MentalModelBridge` searches.
-5. Retrieve canonical models separately for each selected investor.
-6. Produce one independent `InvestorReasoningOutput` per investor with a
+2. Optionally collect a bounded `MicroResearchData` record.
+3. Build an evidence-only company `MicroView`, hydrating collector-owned facts
+   locally so an LLM cannot rewrite their values or citations.
+4. Load or construct one company-independent daily US `MacroView` from
+   `MacroResearchData`.
+5. Create 1–6 focused `MentalModelBridge` searches, including any material
+   company transmission from the shared macro environment.
+6. Retrieve canonical models separately for each selected investor.
+7. Produce one independent `InvestorReasoningOutput` per investor with a
    self-contained investment view of at least 80 words and 3–6 distinct,
    evidence-backed mental-model inferences.
-7. Compare the investor outputs and produce an `InvestmentCommitteeOutput`.
+8. Compare the investor outputs and produce an `InvestmentCommitteeOutput`.
 
 Python controls the sequence directly. The MVP does not use CrewAI Flows,
 memory, delegation, direct interaction between investors, or parallel
@@ -25,13 +29,29 @@ only when it has a direct, material transmission to that thesis.
 
 ## Research boundary
 
-The researcher uses only facts present in:
+Without `--external-research`, behavior is unchanged: the researchers use only
+the question and optional UTF-8 `--research-context`.
 
-- the investment question; and
-- the optional UTF-8 file supplied with `--research-context`.
+With external research enabled, dedicated collectors—not reasoning agents—may
+use:
 
-It does not fetch live prices, filings, or news. Unsupported current facts are
-recorded as unknowns so the final decision can expose missing information.
+- SEC filings and Company Facts XBRL;
+- one Exa structured search grounded in official company investor-relations
+  documents;
+- one Alpaca IEX price snapshot, combined with SEC-reported shares
+  outstanding to calculate market capitalisation;
+- FRED rates, credit, nominal GDP, and corporate-equity data;
+- Yale's official Shiller CAPE workbook.
+
+The hard defaults are two filings and one cited IR source document. The UI/CLI
+allow up to two filings and four cited IR source documents from one structured
+Exa search. Exa returns only the requested company
+description, qualitative observations, and optional disclosed credit rating;
+every accepted field must be grounded in a validated official-company URL.
+The daily macro collector makes at most five HTTP attempts and contains only
+four indicator groups: 5-year Treasuries, broad investment-grade spreads, a
+labelled Buffett proxy, and Shiller CAPE. No raw filing, XBRL history, search
+snippet, or macro series is passed to investors.
 
 ## Run
 
@@ -51,6 +71,58 @@ PYTHONPATH=code python -m crew.run_crew \
   --investor marks \
   --investor flatt
 ```
+
+Enable the bounded sources:
+
+```bash
+PYTHONPATH=code python -m crew.run_crew \
+  "Is Berkshire Hathaway still attractively valued?" \
+  --external-research \
+  --max-filings 2 \
+  --max-ir-documents 1 \
+  --investor buffett \
+  --investor munger
+```
+
+Individual source flags support `--source` and `--no-source` forms:
+
+```text
+--[no-]sec-filings
+--[no-]investor-relations
+--[no-]market-data
+--[no-]rates-and-credit
+--[no-]aggregate-valuation
+--[no-]credit-rating
+```
+
+`--credit-rating` is experimental and accepts a rating only from a bounded
+official company document. If none is found, the rating remains unknown and
+the shared broad investment-grade spread stays explicitly labelled as a proxy.
+
+## Shared daily MacroView
+
+The validated daily macro file is stored atomically as JSON under
+`data/processed/crew/macro_views` by default. This is a versioned daily input,
+not a general source cache. If today's compatible object is absent or invalid,
+the first committee run constructs it within the five-request budget.
+
+An end-of-day scheduler can prepare the next weekday in advance:
+
+```bash
+PYTHONPATH=code python -m crew.research.prepare_macro
+```
+
+An explicit date and rebuild are also supported:
+
+```bash
+PYTHONPATH=code python -m crew.research.prepare_macro \
+  --applicable-date 2026-07-30 \
+  --force
+```
+
+The path can be changed with `MACRO_VIEW_STORE_PATH`. Runtime-generated local
+files on Streamlit Community Cloud are not guaranteed to survive a container
+restart; lazy reconstruction keeps the MVP functional when that occurs.
 
 Run without a research file:
 
@@ -152,6 +224,18 @@ Embedding configuration remains independently swappable:
 EMBEDDING_PROVIDER=openai
 EMBEDDING_MODEL=text-embedding-3-large
 EMBEDDING_DIMENSIONS=1024
+```
+
+External source configuration:
+
+```dotenv
+SEC_USER_AGENT="The Diligence Room your-email@example.com"
+ALPACA_API_KEY_ID=your-alpaca-key-id
+ALPACA_API_SECRET_KEY=your-alpaca-secret-key
+ALPACA_DATA_API_BASE=https://data.alpaca.markets
+FRED_API_KEY=your-fred-api-key
+EXA_API_KEY=your-exa-api-key
+MACRO_VIEW_STORE_PATH=data/processed/crew/macro_views
 ```
 
 OpenRouter reasoning settings do not change embeddings. Changing embedding

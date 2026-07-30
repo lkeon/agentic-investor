@@ -18,9 +18,9 @@ auditable decision.
 ## What the product does
 
 ```text
-Investment question + supplied research
+Investment question + supplied or bounded external research
                     ↓
-       Company view + macro view
+ Company MicroView + shared daily US MacroView
                     ↓
        Material analytical questions
                     ↓
@@ -41,8 +41,10 @@ The result explains:
 - the evidence and sources behind the analysis.
 
 The holding approach has no fixed end date: ownership continues only while the
-company thesis remains valid. Macro conditions are monitored as secondary
-inputs and matter only when they have a direct, material effect on that thesis.
+company thesis remains valid. One compact daily US `MacroView` gives every
+company the same rates, credit, Buffett Indicator proxy, and Shiller CAPE
+backdrop. Company-specific transmission is assessed later and remains
+secondary to business fundamentals and valuation.
 
 ## Mental-model knowledge base
 
@@ -58,10 +60,19 @@ included 3D visualisation.
 
 ## Current MVP boundary
 
-The committee structures only the investment question and research supplied by
-the user. It does not yet browse the web or fetch live filings, prices, or
-market data. Unsupported decision-relevant facts remain explicit unknowns
-rather than being filled from model memory.
+External research is optional and disabled by default. When enabled, a bounded
+collector may use SEC filings and XBRL, Exa structured research grounded in
+official company investor-relations documents, an Alpaca IEX reference price,
+FRED, and Yale's official Shiller dataset. Market capitalisation is calculated
+from that price and the latest SEC-reported shares outstanding. The interface
+exposes hard limits of two filings and four cited IR source documents from one
+structured Exa search. Ungrounded Exa fields are discarded, and reasoning
+agents never receive browser tools.
+
+The MVP deliberately excludes general news, competitors, forecasts,
+transcripts, social media, technical indicators, and autonomous browsing.
+Unavailable facts retain explicit typed reasons instead of being filled from
+model memory.
 
 This is research and decision support, not personalised financial advice.
 
@@ -84,6 +95,11 @@ To route any crew reasoning stage through OpenRouter, also set
 `openrouter/<provider>/<model>` identifier. The committee expects a populated
 canonical mental-model database; create its tables with:
 
+Optional external research also uses `SEC_USER_AGENT`,
+`ALPACA_API_KEY_ID`, `ALPACA_API_SECRET_KEY`, `FRED_API_KEY`, and
+`EXA_API_KEY`. These are required only for their selected sources; the
+unconfigured source is reported as unavailable rather than silently replaced.
+
 ```bash
 PYTHONPATH=code python -m mental_model_pipeline.database.setup_database
 ```
@@ -100,6 +116,7 @@ Or run the committee directly:
 ```bash
 PYTHONPATH=code python -m crew.run_crew \
   "Should I invest in Brookfield at the current price?" \
+  --external-research \
   --investor buffett \
   --investor marks \
   --investor flatt

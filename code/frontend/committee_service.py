@@ -34,7 +34,7 @@ INVESTOR_SESSION_KEY = "available_investors"
 
 
 def _is_streamlit_cloud() -> bool:
-    """Return whether shared cloud-session safeguards should be enabled."""
+    """Return whether hosted deployment safeguards should be enabled."""
 
     return (
         os.getenv("DILIGENCE_DEPLOYMENT", "").strip().lower()
@@ -227,10 +227,6 @@ def available_investors_for_session(
 def load_latest_result() -> dict[str, object] | None:
     """Load and validate the most recent completed committee artifact."""
 
-    # A deployed Streamlit process is shared by multiple browser sessions.
-    # Never expose a previous session's locally persisted committee result.
-    if _is_streamlit_cloud():
-        return None
     if not DEFAULT_OUTPUT_PATH.is_file():
         return None
     try:
@@ -241,8 +237,25 @@ def load_latest_result() -> dict[str, object] | None:
         return None
 
 
+def _external_stage_update(line: str) -> ProgressUpdate | None:
+    """Expose one external-research milestone without provider noise."""
+
+    if line.startswith("External research | "):
+        parts = line.split(" | ", 3)
+        if len(parts) != 4:
+            return None
+        _, provider, status, detail = parts
+        if provider == "Company evidence" and status.lower() == "complete":
+            return ProgressUpdate("Bounded research complete", 26, detail)
+    return None
+
+
 def _stage_update(line: str) -> ProgressUpdate | None:
     """Translate stable CLI messages into customer-facing progress."""
+
+    external_update = _external_stage_update(line)
+    if external_update is not None:
+        return external_update
 
     fixed_stages = (
         (
@@ -255,12 +268,23 @@ def _stage_update(line: str) -> ProgressUpdate | None:
             ),
         ),
         (
+            "Collecting bounded MicroResearchData",
+            "Gathering bounded company evidence",
+            12,
+            (
+                "Official filings, company documents, and selected market "
+                "reference data are being gathered within the configured "
+                "document and search limits."
+            ),
+        ),
+        (
             "Building MicroView",
             "Structuring company evidence",
-            20,
+            28,
             (
-                "The supplied company, financial, management, valuation, and "
-                "risk evidence is being organised into an auditable MicroView."
+                "Supplied and externally collected company, financial, "
+                "management, valuation, and risk evidence is being organised "
+                "into an auditable MicroView."
             ),
         ),
         (
@@ -273,7 +297,16 @@ def _stage_update(line: str) -> ProgressUpdate | None:
             ),
         ),
         (
-            "Building mental-model data bridges",
+            "Loading shared daily MacroView",
+            "Preparing the shared market environment",
+            30,
+            (
+                "The bounded US rates, credit, Buffett Indicator proxy, and "
+                "Shiller CAPE record is being loaded or constructed for the day."
+            ),
+        ),
+        (
+            "Building mental-model bridges",
             "Defining analytical pathways",
             43,
             (
@@ -328,6 +361,20 @@ def _stage_update(line: str) -> ProgressUpdate | None:
             ),
         )
 
+    investor_step = re.search(
+        r"Investor step (\d+)/(\d+) · ([^·]+) · (.+?)(?:\.\.\.)?$",
+        line,
+    )
+    if investor_step:
+        current, total, investor_id, action = investor_step.groups()
+        investor_name = display_name(investor_id.strip())
+        fraction = int(current) / max(1, int(total))
+        return ProgressUpdate(
+            f"Independent analysis · {investor_name}",
+            55 + round(37 * fraction),
+            f"{investor_name} is {action.strip().rstrip('.')}.",
+        )
+
     if "PostgreSQL is unavailable" in line:
         return ProgressUpdate(
             "Preparing the model library",
@@ -352,6 +399,61 @@ def display_name(identifier: str) -> str:
     return identifier.replace("_", " ").replace("-", " ").title()
 
 
+def _build_committee_command(
+    question: str,
+    *,
+    investors: list[str],
+    top_k: int,
+    neighbours: int,
+    external_research_settings: dict[str, object] | None,
+) -> list[str]:
+    """Build one explicit CLI command from validated frontend controls."""
+
+    command = [
+        sys.executable,
+        "-m",
+        "crew.run_crew",
+        question.strip(),
+        "--top-k",
+        str(top_k),
+        "--neighbours",
+        str(neighbours),
+        "--output-path",
+        str(DEFAULT_OUTPUT_PATH),
+    ]
+    research_settings = external_research_settings or {}
+    if bool(research_settings.get("enabled", False)):
+        command.append("--external-research")
+        boolean_options = {
+            "sec_filings_enabled": ("sec-filings", True),
+            "investor_relations_enabled": ("investor-relations", True),
+            "market_data_enabled": ("market-data", True),
+            "rates_and_credit_enabled": ("rates-and-credit", True),
+            "aggregate_valuation_enabled": ("aggregate-valuation", True),
+            "credit_rating_enabled": ("credit-rating", False),
+        }
+        for setting_name, (option_name, default) in boolean_options.items():
+            command.append(
+                f"--{option_name}"
+                if bool(research_settings.get(setting_name, default))
+                else f"--no-{option_name}"
+            )
+        numeric_options = {
+            "max_filings": ("max-filings", 2),
+            "max_ir_documents": ("max-ir-documents", 1),
+        }
+        for setting_name, (option_name, default) in numeric_options.items():
+            command.extend(
+                [
+                    f"--{option_name}",
+                    str(research_settings.get(setting_name, default)),
+                ]
+            )
+    for investor_id in investors:
+        command.extend(["--investor", investor_id])
+    return command
+
+
 def run_committee(
     question: str,
     *,
@@ -359,6 +461,7 @@ def run_committee(
     research_context: str | None,
     top_k: int,
     neighbours: int,
+    external_research_settings: dict[str, object] | None = None,
     technical_debug: bool = False,
     on_progress: Callable[[ProgressUpdate, list[str]], None] | None = None,
 ) -> dict[str, object]:
@@ -371,33 +474,13 @@ def run_committee(
     if not investors:
         raise ValueError("Select at least one investor perspective.")
 
-    output_path = DEFAULT_OUTPUT_PATH
-    ephemeral_output = False
-    if _is_streamlit_cloud():
-        # Each hosted run gets an isolated result artifact. The validated
-        # result is returned to that session and the temporary file is removed.
-        with NamedTemporaryFile(
-            suffix=".json",
-            prefix="diligence-result-",
-            delete=False,
-        ) as output_file:
-            output_path = Path(output_file.name)
-        ephemeral_output = True
-
-    command = [
-        sys.executable,
-        "-m",
-        "crew.run_crew",
-        question.strip(),
-        "--top-k",
-        str(top_k),
-        "--neighbours",
-        str(neighbours),
-        "--output-path",
-        str(output_path),
-    ]
-    for investor_id in investors:
-        command.extend(["--investor", investor_id])
+    command = _build_committee_command(
+        question,
+        investors=investors,
+        top_k=top_k,
+        neighbours=neighbours,
+        external_research_settings=external_research_settings,
+    )
     if technical_debug:
         # CrewAI verbose output is useful for prompt, task, tool, validation,
         # timing, and model-quality diagnosis. It is shown only in the local
@@ -483,7 +566,7 @@ def run_committee(
                 f"Committee execution failed: {detail}",
                 logs,
             )
-        return _load_validated_result(output_path)
+        return _load_validated_result(DEFAULT_OUTPUT_PATH)
     finally:
         if process is not None:
             if process.poll() is None:
@@ -494,8 +577,6 @@ def run_committee(
                 _STOPPED_PROCESS_IDS.discard(process.pid)
         if context_path is not None:
             context_path.unlink(missing_ok=True)
-        if ephemeral_output:
-            output_path.unlink(missing_ok=True)
 
 
 def _load_validated_result(path: Path) -> dict[str, object]:

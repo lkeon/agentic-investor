@@ -105,6 +105,27 @@ def _render_customer_progress(
     )
 
 
+def _render_diligence_progress(
+    target: object,
+    progress: int,
+    *,
+    active: bool,
+) -> None:
+    """Show truthful completion with a browser-side activity shimmer."""
+
+    value = max(0, min(100, progress))
+    state = "active" if active and value < 100 else "complete"
+    target.markdown(
+        f'<div class="diligence-progress {state}" '
+        f'role="progressbar" aria-label="Diligence progress" '
+        f'aria-valuemin="0" aria-valuemax="100" '
+        f'aria-valuenow="{value}">'
+        f'<div class="diligence-progress-fill" style="width: {value}%"></div>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
 def _render_technical_log(
     target: object,
     logs: list[str],
@@ -330,6 +351,19 @@ def _render_input() -> object:
     if "question_input" not in st.session_state:
         st.session_state.question_input = ""
 
+    start_after_collapse = bool(
+        st.session_state.pop("start_diligence_after_collapse", False)
+    )
+
+    # Expanders do not expose a server-side open/closed state. Incrementing
+    # this invisible label suffix gives the three input expanders a fresh
+    # frontend identity after a run is started, so their expanded=False
+    # default is applied without affecting the visible labels or input values.
+    input_expander_generation = int(
+        st.session_state.get("input_expander_generation", 0)
+    )
+    input_expander_suffix = "\u2063" * input_expander_generation
+
     try:
         available = _available_investors()
     except InvestorDiscoveryError as error:
@@ -337,15 +371,17 @@ def _render_input() -> object:
         st.caption(str(error))
         st.stop()
 
-    with st.form("committee_form", border=False):
+    # A regular container, rather than st.form, lets the bounded-research
+    # switch immediately enable or disable its dependent controls.
+    with st.container(border=True, key="committee_form"):
         st.markdown(
             '<div class="form-heading">Convene the Diligence Room</div>',
             unsafe_allow_html=True,
         )
         st.markdown(
-            '<div class="input-heading"><span>01</span><div>'
-            "<strong>Investment question</strong>"
-            "<p>Frame the company, decision, and valuation issue you want to test.</p>"
+            '<div class="input-heading"><div>'
+            "<p>What investment decision are you testing? Name the company, "
+            "the decision, and the valuation question.</p>"
             "</div></div>",
             unsafe_allow_html=True,
         )
@@ -357,26 +393,62 @@ def _render_input() -> object:
             label_visibility="collapsed",
         )
 
-        st.markdown(
-            '<div class="input-heading"><span>02</span><div>'
-            '<strong>Research context <em>Optional</em></strong>'
-            "<p>Paste the evidence and investment brief you want the Room to examine.</p>"
-            "</div></div>",
-            unsafe_allow_html=True,
-        )
-        research_context = st.text_area(
-            "Research context (optional)",
-            height=175,
-            placeholder=(
-                "Business quality, financial performance, valuation, risks, "
-                "material macro factors, and source notes…"
-            ),
-            label_visibility="collapsed",
-        )
+        with st.container(key="diligence_info"):
+            with st.expander(
+                f"How the Diligence Room works{input_expander_suffix}",
+                expanded=False,
+            ):
+                st.markdown(
+                    """
+                    **Bring an investment thesis and the evidence behind it.**
+
+                    The Diligence Room turns your question, context, and
+                    attached research into a disciplined decision record. It
+                    first separates company-specific evidence into a
+                    **MicroView**: business quality, management, financials,
+                    balance sheet, valuation, and risks. A shared daily
+                    **MacroView** provides a secondary market backdrop; it
+                    does not override a company-level value-investing case.
+
+                    When **Bounded External Research** is enabled, the Room
+                    can add limited, auditable inputs from SEC filings,
+                    official investor-relations documents, Alpaca market data,
+                    FRED, and Yale's Shiller dataset. When it is disabled, the
+                    Room reasons only from what you provide.
+
+                    The mental-model library is derived from renowned
+                    investors' public writings and engagements, organised as a
+                    hierarchical network. The Room connects the evidence to
+                    relevant canonical mental models, then each selected
+                    investor perspective reasons independently through its own
+                    retrieved model set.
+
+                    Finally, the CIO compares the perspectives and produces a
+                    structured decision, confidence level, key conditions, and
+                    unresolved evidence needs. The Room does not manufacture
+                    missing facts: uncertainty remains visible for you to
+                    investigate before committing capital.
+                    """
+                )
+
         with st.expander(
-            "What should I include in the research context?",
+            f"Provide additional context and files{input_expander_suffix}",
             expanded=False,
         ):
+            st.caption(
+                "Optional supporting evidence for the committee."
+            )
+            st.markdown("##### Research context")
+            research_context = st.text_area(
+                "Research context (optional)",
+                height=175,
+                placeholder=(
+                    "Business quality, financial performance, valuation, risks, "
+                    "material macro factors, and source notes…"
+                ),
+                label_visibility="collapsed",
+            )
+            st.markdown("##### What to include")
             st.markdown(
                 """
                 **MicroView — company and security evidence**
@@ -386,10 +458,17 @@ def _render_input() -> object:
                 - Financial performance, balance sheet, and liquidity
                 - Current valuation, material risks, and potential catalysts
 
-                **MacroView — only direct company transmission**
+                **Company-specific exposure context**
 
-                - Interest rates, regulation, currencies, industry cycles, or
-                  financing conditions that could materially change the thesis
+                - Company-specific regulation, currencies, industry cycles,
+                  or financing exposures that could materially change the thesis
+                - Explain how those exposures connect to the company; the
+                  shared daily MacroView supplies the general US backdrop
+
+                When bounded external research is enabled, the Room separately
+                gathers SEC company data and one shared daily US market
+                environment. Your context remains useful for facts that
+                structured public sources do not contain.
 
                 Include source titles, publishers, dates, and URLs where
                 possible. Distinguish reported facts, estimates, assumptions,
@@ -397,50 +476,28 @@ def _render_input() -> object:
                 into validated MicroView and MacroView Pydantic records.
                 """
             )
+            st.markdown("##### Supporting text files")
+            uploaded_files = st.file_uploader(
+                "Attach text files",
+                type=["txt", "md", "json", "csv"],
+                accept_multiple_files=True,
+                label_visibility="collapsed",
+            )
 
-        st.markdown(
-            '<div class="input-heading attachment-heading"><span>03</span><div>'
-            '<strong>Attach text files <em>Optional</em></strong>'
-            "<p>Add supporting TXT, Markdown, JSON, or CSV research files.</p>"
-            "</div></div>",
-            unsafe_allow_html=True,
-        )
-        uploaded_files = st.file_uploader(
-            "Attach text files",
-            type=["txt", "md", "json", "csv"],
-            accept_multiple_files=True,
-            label_visibility="collapsed",
-        )
-
-        with st.container(key="diligence_info"):
-            with st.expander("How the Diligence Room works", expanded=False):
-                st.markdown(
-                    """
-                    **Bring your investment idea and supporting research.**
-
-                    The Diligence Room provides structured mental-model
-                    reasoning around the thesis you supply. The mental-model
-                    library is derived from renowned investors' public writings
-                    and engagements and connected in a hierarchical network.
-
-                    Selected investor perspectives use the relevant models as
-                    reasoning guardrails—not as substitutes for evidence—and
-                    reason independently before the CIO produces the final
-                    synthesis. Missing current facts remain explicit
-                    uncertainties.
-                    """
-                )
-        with st.expander("Diligence Room Settings", expanded=False):
+        with st.expander(
+            f"Diligence Room Settings{input_expander_suffix}",
+            expanded=False,
+        ):
             preferred = [
                 investor
                 for investor in ("buffett", "munger")
                 if investor in available
             ]
             investors = st.pills(
-                "Investor perspectives",
+                "Investor Perspectives",
                 options=available,
                 selection_mode="multi",
-                default=preferred or available[:2],
+                default=preferred or available[:3],
                 format_func=display_name,
                 width="stretch",
             )
@@ -448,6 +505,78 @@ def _render_input() -> object:
                 f"All {len(available)} available investor perspectives are "
                 "shown. Select one or more."
             )
+            st.markdown("##### Bounded External Research")
+            external_research_enabled = st.checkbox(
+                "Enable bounded external research",
+                value=False,
+                help=(
+                    "When disabled, the committee considers only your "
+                    "investment question, pasted context, and attached text "
+                    "files. No external sources are fetched."
+                ),
+            )
+            source_left, source_middle, source_right = st.columns(3)
+            with source_left:
+                sec_filings_enabled = st.checkbox(
+                    "SEC filings and XBRL",
+                    value=True,
+                    disabled=not external_research_enabled,
+                )
+                investor_relations_enabled = st.checkbox(
+                    "Official investor relations",
+                    value=True,
+                    disabled=not external_research_enabled,
+                )
+            with source_middle:
+                market_data_enabled = st.checkbox(
+                    "Alpaca IEX market price",
+                    value=True,
+                    disabled=not external_research_enabled,
+                )
+                rates_and_credit_enabled = st.checkbox(
+                    "US rates and credit",
+                    value=True,
+                    disabled=not external_research_enabled,
+                )
+            with source_right:
+                aggregate_valuation_enabled = st.checkbox(
+                    "Buffett proxy and Shiller CAPE",
+                    value=True,
+                    disabled=not external_research_enabled,
+                )
+                credit_rating_enabled = st.checkbox(
+                    "Official credit-rating disclosure",
+                    value=False,
+                    help=(
+                        "Experimental: accepts a rating only when it is found "
+                        "in a bounded official company document."
+                    ),
+                    disabled=not external_research_enabled,
+                )
+            limit_left, limit_middle = st.columns(2)
+            with limit_left:
+                max_filings = st.slider(
+                    "Maximum SEC filings",
+                    min_value=0,
+                    max_value=2,
+                    value=2,
+                    disabled=not external_research_enabled,
+                )
+            with limit_middle:
+                max_ir_documents = st.slider(
+                    "Maximum IR source documents",
+                    min_value=0,
+                    max_value=4,
+                    value=1,
+                    disabled=not external_research_enabled,
+                )
+            st.caption(
+                "One Exa request returns the required structured fields with "
+                "citations to official company documents. Up to four cited "
+                "documents may be retained; ungrounded fields are discarded."
+            )
+
+            st.markdown("##### Mental-model retrieval")
             settings_left, settings_right = st.columns(2)
             with settings_left:
                 top_k = st.slider(
@@ -472,13 +601,13 @@ def _render_input() -> object:
         with actions_col:
             run_col, stop_col = st.columns(2)
             with run_col:
-                submitted = st.form_submit_button(
+                submitted = st.button(
                     "Begin Diligence",
                     type="primary",
                     use_container_width=True,
                 )
             with stop_col:
-                stop_requested = st.form_submit_button(
+                stop_requested = st.button(
                     "Stop Diligence",
                     use_container_width=True,
                 )
@@ -501,6 +630,18 @@ def _render_input() -> object:
         else:
             st.info("No diligence run is currently active.")
         return result_slot
+
+    if submitted and not start_after_collapse:
+        # Re-render once before work begins. This closes every optional input
+        # panel above the action buttons, leaving the progress area as the
+        # user's visual focus throughout the active diligence run.
+        st.session_state.input_expander_generation = (
+            input_expander_generation + 1
+        )
+        st.session_state.start_diligence_after_collapse = True
+        st.rerun()
+
+    submitted = submitted or start_after_collapse
 
     if not submitted:
         saved_updates = st.session_state.get("latest_customer_progress", [])
@@ -534,6 +675,17 @@ def _render_input() -> object:
         "direct_models_per_question": top_k,
         "related_models_per_question": neighbours,
         "technical_debug": show_logs,
+        "external_research": {
+            "enabled": external_research_enabled,
+            "sec_filings_enabled": sec_filings_enabled,
+            "investor_relations_enabled": investor_relations_enabled,
+            "market_data_enabled": market_data_enabled,
+            "rates_and_credit_enabled": rates_and_credit_enabled,
+            "aggregate_valuation_enabled": aggregate_valuation_enabled,
+            "credit_rating_enabled": credit_rating_enabled,
+            "max_filings": max_filings,
+            "max_ir_documents": max_ir_documents,
+        },
     }
 
     stage_history: list[ProgressUpdate] = []
@@ -545,7 +697,8 @@ def _render_input() -> object:
 
     with feedback_slot.container():
         with st.container(border=True, key="execution_feedback"):
-            progress_bar = st.progress(2)
+            progress_view = st.empty()
+            _render_diligence_progress(progress_view, 2, active=True)
             customer_view = st.empty()
             technical_view = st.empty()
             feedback_message = st.empty()
@@ -557,7 +710,11 @@ def _render_input() -> object:
                 stage_history.append(update)
 
         def on_progress(update: ProgressUpdate, logs: list[str]) -> None:
-            progress_bar.progress(update.progress)
+            _render_diligence_progress(
+                progress_view,
+                update.progress,
+                active=True,
+            )
             remember_progress(update)
             latest_logs[:] = logs
             _render_customer_progress(customer_view, stage_history)
@@ -571,10 +728,20 @@ def _render_input() -> object:
                 research_context=combined_context,
                 top_k=top_k,
                 neighbours=neighbours,
+                external_research_settings=(
+                    st.session_state.latest_run_options[
+                        "external_research"
+                    ]
+                ),
                 technical_debug=show_logs,
                 on_progress=on_progress,
             )
         except CommitteeStopped as error:
+            _render_diligence_progress(
+                progress_view,
+                stage_history[-1].progress if stage_history else 2,
+                active=False,
+            )
             latest_logs[:] = error.logs
             st.session_state.latest_customer_progress = stage_history.copy()
             st.session_state.latest_technical_logs = latest_logs.copy()
@@ -588,6 +755,11 @@ def _render_input() -> object:
             )
             return result_slot
         except CommitteeRunError as error:
+            _render_diligence_progress(
+                progress_view,
+                stage_history[-1].progress if stage_history else 2,
+                active=False,
+            )
             latest_logs[:] = error.logs
             st.session_state.latest_customer_progress = stage_history.copy()
             st.session_state.latest_technical_logs = latest_logs.copy()
@@ -599,6 +771,11 @@ def _render_input() -> object:
             feedback_message.error(str(error))
             return result_slot
         except Exception as error:
+            _render_diligence_progress(
+                progress_view,
+                stage_history[-1].progress if stage_history else 2,
+                active=False,
+            )
             latest_logs.extend(
                 [
                     "",
@@ -624,7 +801,7 @@ def _render_input() -> object:
                     "The validated decision record is ready for review.",
                 )
             )
-        progress_bar.progress(100)
+        _render_diligence_progress(progress_view, 100, active=False)
         _render_customer_progress(customer_view, stage_history)
         feedback_message.success("Diligence completed successfully.")
         st.session_state.latest_customer_progress = stage_history.copy()
@@ -880,7 +1057,6 @@ def _render_investors(result: dict[str, object]) -> None:
             """
             <div class="investor-selector-heading">
               <span>PERSPECTIVE SELECTOR</span>
-              <div class="investor-selector-copy">Choose an investor perspective. Compare how each investor applies a distinct mental-model set to the same evidence.</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -917,6 +1093,9 @@ def _render_structured_debug(result: dict[str, object]) -> None:
     investor_inputs = result.get("investor_reasoning_inputs", {})
     investor_outputs = result.get("investor_outputs", {})
     research_context = st.session_state.get("latest_research_context")
+    external_settings = result.get("external_research_settings", {})
+    micro_research_data = result.get("micro_research_data")
+    macro_research_data = result.get("macro_research_data")
 
     st.caption(
         "Validated JSON retained by the MVP, grouped by its corresponding "
@@ -939,8 +1118,20 @@ def _render_structured_debug(result: dict[str, object]) -> None:
             "output_name": "InvestmentQuestion",
             "output": question,
         },
+    ]
+    if micro_research_data is not None:
+        stages.append(
+            {
+                "title": "02 · Bounded external company research",
+                "input_name": "ExternalResearchSettings",
+                "input": external_settings,
+                "output_name": "MicroResearchData",
+                "output": micro_research_data,
+            }
+        )
+    stages.append(
         {
-            "title": "02 · Company evidence research",
+            "title": "Company evidence · MicroView",
             "input_name": "MicroResearchInput",
             "input": {
                 "question": question,
@@ -949,20 +1140,37 @@ def _render_structured_debug(result: dict[str, object]) -> None:
                     if research_context is not None
                     else "Not retained when loading an earlier artifact."
                 ),
+                "micro_research_data": micro_research_data,
             },
             "output_name": "MicroView",
             "output": micro_view,
-        },
+        }
+    )
+    if macro_research_data is not None:
+        stages.append(
+            {
+                "title": "Shared daily market research",
+                "input_name": "ExternalResearchSettings",
+                "input": external_settings,
+                "output_name": "MacroResearchData",
+                "output": macro_research_data,
+            }
+        )
+    stages.extend(
+        [
         {
-            "title": "03 · Material macro research",
+            "title": "Market environment · MacroView",
             "input_name": "MacroResearchInput",
             "input": {
-                "question": question,
-                "micro_view": micro_view,
-                "research_context": (
-                    research_context
-                    if research_context is not None
-                    else "Not retained when loading an earlier artifact."
+                "macro_research_data": macro_research_data,
+                "legacy_company_context": (
+                    {
+                        "question": question,
+                        "micro_view": micro_view,
+                        "research_context": research_context,
+                    }
+                    if macro_research_data is None
+                    else None
                 ),
             },
             "output_name": "MacroView",
@@ -983,7 +1191,8 @@ def _render_structured_debug(result: dict[str, object]) -> None:
             "output_name": "RetrievedMentalModelBridgesByInvestor",
             "output": retrieved_bridges,
         },
-    ]
+        ]
+    )
     for investor_id, investor_input in investor_inputs.items():
         stages.append(
             {
@@ -1145,7 +1354,15 @@ def _render_result(result: dict[str, object]) -> None:
         st.caption(
             "Embedding identity: " + str(result.get("embedding_identity", "Unknown"))
         )
-        st.json(config)
+        st.json(
+            {
+                "reasoning_models": config,
+                "external_research": result.get(
+                    "external_research_settings",
+                    {},
+                ),
+            }
+        )
         markdown_download, json_download = st.columns(2)
         with markdown_download:
             st.download_button(

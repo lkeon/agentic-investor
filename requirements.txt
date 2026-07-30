@@ -16,3 +16,4 @@ streamlit>=1.53,<2
 plotly>=6,<7
 scikit-learn>=1.5,<2
 pandas>=2,<3
+xlrd>=2,<3
