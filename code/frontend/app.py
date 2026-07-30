@@ -1443,8 +1443,7 @@ def _render_about_project() -> None:
             use them as reasoning guardrails. It is also an educational space
             for value investors who want to explore how great investors assess
             a business. You can inspect the underlying fragments, canonical
-            mental models, and their relationships in the [Mental Model Explorer]
-            (https://mentalmodelexplorer.streamlit.app/).
+            mental models, and their relationships in the [Mental Model Explorer](https://mentalmodelexplorer.streamlit.app/).
 
             The investment framework used herein partly draws on the ME–ME–ME 
             approach taught as part of the LSE Finance programme.
