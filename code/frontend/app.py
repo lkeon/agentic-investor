@@ -1393,6 +1393,34 @@ def _render_result(result: dict[str, object]) -> None:
         _render_structured_debug(result)
 
 
+def _render_about_project() -> None:
+    """Render the project context after all interactive diligence content."""
+
+    st.divider()
+    with st.expander("About the project", expanded=False):
+        st.markdown(
+            """
+            The Diligence Room is inspired by the best value investors—most
+            notably Warren Buffett, Mohnish Pabrai, and Guy Spier. It began
+            with an ironic discovery: building agentic software to retrieve
+            and apply mental models was much quicker than reading the 400+
+            public documents from which those models are drawn.
+
+            The tool is primarily here to retrieve relevant mental models and
+            use them as reasoning guardrails. It is also an educational space
+            for value investors who want to explore how great investors assess
+            a business. You can inspect the underlying fragments, canonical
+            mental models, and their relationships in the [Agentic Investor
+            mental-model explorer](https://agentic-investor.streamlit.app/).
+
+            I’m Leon Kocjancic. I’m interested in investing across different
+            horizons, including long and potentially indefinite ownership,
+            where business value, durable moats, and management quality remain
+            the prevailing factors.
+            """
+        )
+
+
 def main() -> None:
     st.set_page_config(
         page_title="The Diligence Room",
@@ -1415,6 +1443,7 @@ def main() -> None:
     if result:
         with result_slot.container():
             _render_result(result)
+    _render_about_project()
 
 
 if __name__ == "__main__":
