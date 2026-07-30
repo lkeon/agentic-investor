@@ -11,6 +11,7 @@ import traceback
 from urllib.parse import urlparse
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 APP_DIR = Path(__file__).resolve().parent
 BRAND_ICON_PATH = APP_DIR / "assets" / "the-diligence-room-icon.png"
@@ -74,6 +75,34 @@ def _literal_markdown_label(value: object) -> str:
     """Escape a Streamlit Markdown label without allowing inline maths."""
 
     return escape(str(value or "")).replace("$", r"\$")
+
+
+def _anchor_investor_selector() -> None:
+    """Request a one-time viewport restore after an investor selection."""
+
+    st.session_state.anchor_investor_selector = True
+
+
+def _restore_investor_selector_viewport() -> None:
+    """Return a Streamlit rerun to the investor selector, not page top."""
+
+    if not st.session_state.pop("anchor_investor_selector", False):
+        return
+    components.html(
+        """
+        <script>
+          const target = window.parent.document.getElementById(
+            "investor-perspective-selector"
+          );
+          if (target) {
+            requestAnimationFrame(() => {
+              target.scrollIntoView({ behavior: "auto", block: "start" });
+            });
+          }
+        </script>
+        """,
+        height=0,
+    )
 
 
 def _render_customer_progress(
@@ -1060,6 +1089,10 @@ def _render_investors(result: dict[str, object]) -> None:
     if not investor_ids:
         st.info("No investor perspectives were returned.")
         return
+    st.markdown(
+        '<div id="investor-perspective-selector"></div>',
+        unsafe_allow_html=True,
+    )
     with st.container(border=True, key="investor_selector_banner"):
         st.markdown(
             """
@@ -1079,6 +1112,7 @@ def _render_investors(result: dict[str, object]) -> None:
             width="stretch",
             key="result_investor_selector",
             label_visibility="collapsed",
+            on_change=_anchor_investor_selector,
         )
     if selected_investor:
         with st.container(border=True, key="selected_investor_perspective"):
@@ -1443,6 +1477,7 @@ def main() -> None:
     if result:
         with result_slot.container():
             _render_result(result)
+        _restore_investor_selector_viewport()
     _render_about_project()
 
 
