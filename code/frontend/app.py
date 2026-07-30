@@ -416,12 +416,20 @@ def _render_input() -> object:
                     FRED, and Yale's Shiller dataset. When it is disabled, the
                     Room reasons only from what you provide.
 
-                    The mental-model library is derived from renowned
-                    investors' public writings and engagements, organised as a
-                    hierarchical network. The Room connects the evidence to
-                    relevant canonical mental models, then each selected
-                    investor perspective reasons independently through its own
-                    retrieved model set.
+                    The mental-model library begins with **mental-model
+                    fragments (MMFs)**: discrete, attributable insights from
+                    renowned investors' public letters, talks, and interviews.
+                    Related fragments are distilled into **canonical mental
+                    models (MMCs)**: reusable decision guardrails with a
+                    proposition, conditions, and failure conditions. The MMCs
+                    are organised as a hierarchical mental-model network.
+                    The Room connects evidence to relevant MMCs, then each
+                    selected investor perspective reasons independently
+                    through its own retrieved model set.
+
+                    Explore the underlying fragments, MMCs, and their network
+                    connections in the [Agentic Investor mental-model
+                    explorer](https://agentic-investor.streamlit.app/).
 
                     Finally, the CIO compares the perspectives and produces a
                     structured decision, confidence level, key conditions, and
