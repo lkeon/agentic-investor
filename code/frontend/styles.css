@@ -523,16 +523,24 @@ footer {
 }
 
 .reasoning-flow-number {
-  display: block;
-  color: #87928c;
-  font-size: 0.62rem;
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  display: grid;
+  width: 1.15rem;
+  height: 1.15rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--forest-soft);
+  color: var(--forest);
+  font-size: 0.58rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  line-height: 1;
 }
 
 .reasoning-flow-step strong {
   display: block;
-  margin-top: 0.2rem;
+  margin-top: 0.1rem;
   color: var(--forest);
   font-family: Georgia, "Times New Roman", serif;
   font-size: 1.45rem;

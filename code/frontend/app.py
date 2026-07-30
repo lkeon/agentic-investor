@@ -351,6 +351,19 @@ def _render_input() -> object:
     if "question_input" not in st.session_state:
         st.session_state.question_input = ""
 
+    start_after_collapse = bool(
+        st.session_state.pop("start_diligence_after_collapse", False)
+    )
+
+    # Expanders do not expose a server-side open/closed state. Incrementing
+    # this invisible label suffix gives the three input expanders a fresh
+    # frontend identity after a run is started, so their expanded=False
+    # default is applied without affecting the visible labels or input values.
+    input_expander_generation = int(
+        st.session_state.get("input_expander_generation", 0)
+    )
+    input_expander_suffix = "\u2063" * input_expander_generation
+
     try:
         available = _available_investors()
     except InvestorDiscoveryError as error:
@@ -381,7 +394,10 @@ def _render_input() -> object:
         )
 
         with st.container(key="diligence_info"):
-            with st.expander("How the Diligence Room works", expanded=False):
+            with st.expander(
+                f"How the Diligence Room works{input_expander_suffix}",
+                expanded=False,
+            ):
                 st.markdown(
                     """
                     **Bring an investment thesis and the evidence behind it.**
@@ -416,7 +432,7 @@ def _render_input() -> object:
                 )
 
         with st.expander(
-            "Provide additional context and files",
+            f"Provide additional context and files{input_expander_suffix}",
             expanded=False,
         ):
             st.caption(
@@ -468,7 +484,10 @@ def _render_input() -> object:
                 label_visibility="collapsed",
             )
 
-        with st.expander("Diligence Room Settings", expanded=False):
+        with st.expander(
+            f"Diligence Room Settings{input_expander_suffix}",
+            expanded=False,
+        ):
             preferred = [
                 investor
                 for investor in ("buffett", "munger")
@@ -611,6 +630,18 @@ def _render_input() -> object:
         else:
             st.info("No diligence run is currently active.")
         return result_slot
+
+    if submitted and not start_after_collapse:
+        # Re-render once before work begins. This closes every optional input
+        # panel above the action buttons, leaving the progress area as the
+        # user's visual focus throughout the active diligence run.
+        st.session_state.input_expander_generation = (
+            input_expander_generation + 1
+        )
+        st.session_state.start_diligence_after_collapse = True
+        st.rerun()
+
+    submitted = submitted or start_after_collapse
 
     if not submitted:
         saved_updates = st.session_state.get("latest_customer_progress", [])
