@@ -1396,7 +1396,7 @@ def _render_result(result: dict[str, object]) -> None:
 def _render_about_project() -> None:
     """Render the project context after all interactive diligence content."""
 
-    st.divider()
+    # st.divider()
     with st.expander("About the project", expanded=False):
         st.markdown(
             """
