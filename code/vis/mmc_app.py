@@ -1744,15 +1744,15 @@ safety, or capital allocation.
 
 def main() -> None:
     st.set_page_config(
-        page_title="Mental Model Networks",
+        page_title="Mental Model Explorer",
         layout="wide",
     )
 
-    st.title("Visualisation of Canonical Mental Models (MMC)")
+    st.title("Mental Model Explorer")
     st.caption(
         "This project reconstructs and organises the investment mental "
         "models used by leading value investors. The Canonical Mental "
-        "Model (MMC) network shows consolidated investment principles, "
+        "Model (MMC) network shows distilled investment principles, "
         "while the Mental-Model Fragment (MMF) network shows the "
         "individual structured insights from which those models are "
         "formed. Both are displayed as semantic maps for exploring "
