@@ -9,7 +9,10 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from committee_service import (
     InvestorDiscoveryError,
+    _build_committee_command,
     _database_query_with_retries,
+    _external_stage_update,
+    _stage_update,
     available_investors_for_session,
     discover_investors,
 )
@@ -77,6 +80,67 @@ class InvestorDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(first, second)
         self.assertEqual(discover.call_count, 1)
+
+
+class CommitteeCommandTests(unittest.TestCase):
+    def test_external_research_controls_are_forwarded_to_cli(self) -> None:
+        command = _build_committee_command(
+            "Should I buy Example?",
+            investors=["buffett"],
+            top_k=3,
+            neighbours=1,
+            external_research_settings={
+                "enabled": True,
+                "sec_filings_enabled": True,
+                "investor_relations_enabled": False,
+                "market_data_enabled": True,
+                "rates_and_credit_enabled": True,
+                "aggregate_valuation_enabled": False,
+                "credit_rating_enabled": False,
+                "max_filings": 1,
+                "max_ir_documents": 0,
+            },
+        )
+
+        self.assertIn("--external-research", command)
+        self.assertIn("--sec-filings", command)
+        self.assertIn("--no-investor-relations", command)
+        self.assertIn("--no-aggregate-valuation", command)
+        self.assertEqual(command[command.index("--max-filings") + 1], "1")
+        self.assertNotIn("--max-discovery-searches", command)
+
+
+class ExternalProgressTests(unittest.TestCase):
+    def test_provider_messages_remain_technical_only(self) -> None:
+        update = _external_stage_update(
+            "External research | Alpaca market data | complete | "
+            "Retrieved a USD 42.50 reference price dated 2026-07-24."
+        )
+
+        self.assertIsNone(update)
+
+    def test_company_research_summary_becomes_customer_milestone(self) -> None:
+        update = _external_stage_update(
+            "External research | Company evidence | complete | "
+            "Retrieved SEC Company Facts; 1 SEC filing(s); an Alpaca IEX "
+            "market price."
+        )
+
+        self.assertIsNotNone(update)
+        assert update is not None
+        self.assertEqual(update.label, "Bounded research complete")
+        self.assertEqual(update.progress, 26)
+        self.assertIn("Alpaca IEX", update.detail)
+
+    def test_investor_step_becomes_customer_facing_detail(self) -> None:
+        update = _stage_update(
+            "Investor step 1/2 · buffett · applying mental-model inference..."
+        )
+
+        self.assertIsNotNone(update)
+        assert update is not None
+        self.assertEqual(update.label, "Independent analysis · Buffett")
+        self.assertIn("applying mental-model inference", update.detail)
 
 
 if __name__ == "__main__":

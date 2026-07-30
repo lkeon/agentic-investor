@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 import json
 import os
 from pathlib import Path
@@ -23,9 +24,12 @@ from crew.agents import (
     run_investor_reasoning,
 )
 from crew.config import reasoning_model
+from crew.research.macro import get_or_build_daily_macro
+from crew.research.micro import collect_micro_research
 from crew.retrieval import retrieve_for_bridges
 from crew.schemas import (
     CIOReasoningInput,
+    ExternalResearchSettings,
     InvestmentCommitteeOutput,
     OneInvestorReasoningInput,
 )
@@ -150,6 +154,67 @@ def parse_arguments() -> argparse.Namespace:
         default=1,
         help="Directional graph neighbours added per bridge and investor.",
     )
+    parser.add_argument(
+        "--external-research",
+        action="store_true",
+        help=(
+            "Enable the bounded SEC, IR, market, rates, credit, and aggregate "
+            "valuation research layer. Disabled by default."
+        ),
+    )
+    parser.add_argument(
+        "--sec-filings",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable SEC filings and XBRL when external research is enabled.",
+    )
+    parser.add_argument(
+        "--investor-relations",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable bounded official IR document discovery.",
+    )
+    parser.add_argument(
+        "--market-data",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable one Alpaca IEX market-price snapshot.",
+    )
+    parser.add_argument(
+        "--rates-and-credit",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable the shared US rates and broad credit indicators.",
+    )
+    parser.add_argument(
+        "--aggregate-valuation",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable the Buffett proxy and Shiller CAPE.",
+    )
+    parser.add_argument(
+        "--credit-rating",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Experimentally extract a rating only from bounded official IR "
+            "documents; never infer a rating."
+        ),
+    )
+    parser.add_argument(
+        "--max-filings",
+        type=int,
+        choices=range(0, 3),
+        default=2,
+        help="Maximum SEC filing documents fetched (0-2).",
+    )
+    parser.add_argument(
+        "--max-ir-documents",
+        type=int,
+        choices=range(0, 5),
+        default=1,
+        help="Maximum official IR source documents accepted from Exa (0-4).",
+    )
 
     parser.add_argument(
         "--question-model",
@@ -226,9 +291,26 @@ def _model_configuration(args: argparse.Namespace) -> dict[str, str]:
     }
 
 
+def _external_research_settings(
+    args: argparse.Namespace,
+) -> ExternalResearchSettings:
+    return ExternalResearchSettings(
+        enabled=args.external_research,
+        sec_filings_enabled=args.sec_filings,
+        investor_relations_enabled=args.investor_relations,
+        market_data_enabled=args.market_data,
+        rates_and_credit_enabled=args.rates_and_credit,
+        aggregate_valuation_enabled=args.aggregate_valuation,
+        credit_rating_enabled=args.credit_rating,
+        max_filings=args.max_filings,
+        max_ir_documents=args.max_ir_documents,
+    )
+
+
 def main() -> int:
     args = parse_arguments()
     models = _model_configuration(args)
+    external_settings = _external_research_settings(args)
     research_context = _read_research_context(args.research_context)
     print(
         f"Normalising question with {models['question']}...",
@@ -240,31 +322,47 @@ def main() -> int:
         verbose=args.verbose,
     )
 
-    print(
-        f"Building MicroView with {models['research']}...",
-        flush=True,
-    )
+    micro_research_data = None
+    if external_settings.enabled:
+        print("Collecting bounded MicroResearchData...", flush=True)
+        micro_research_data = collect_micro_research(
+            question,
+            external_settings,
+            progress=lambda message: print(message, flush=True),
+        )
+
+    print(f"Building MicroView with {models['research']}...", flush=True)
     micro_view = research_micro_view(
         question,
         research_context=research_context,
+        external_research=micro_research_data,
         model=models["research"],
         verbose=args.verbose,
     )
 
-    print(
-        f"Building MacroView with {models['research']}...",
-        flush=True,
-    )
-    macro_view = research_macro_view(
-        question,
-        micro_view,
-        research_context=research_context,
-        model=models["research"],
-        verbose=args.verbose,
-    )
+    macro_research_data = None
+    if external_settings.enabled:
+        print("Loading shared daily MacroView...", flush=True)
+        macro_research_data, macro_view = get_or_build_daily_macro(
+            external_settings,
+            applicable_date=date.today(),
+            progress=lambda message: print(message, flush=True),
+        )
+    else:
+        print(
+            f"Building MacroView with {models['research']}...",
+            flush=True,
+        )
+        macro_view = research_macro_view(
+            question,
+            micro_view,
+            research_context=research_context,
+            model=models["research"],
+            verbose=args.verbose,
+        )
 
     print(
-        f"Building mental-model data bridges with {models['bridge']}...",
+        f"Building mental-model bridges with {models['bridge']}...",
         flush=True,
     )
     base_bridges = build_mental_model_bridges(
@@ -319,6 +417,19 @@ def main() -> int:
             args.output_path,
             {
                 "question": question.model_dump(mode="json"),
+                "external_research_settings": external_settings.model_dump(
+                    mode="json"
+                ),
+                "micro_research_data": (
+                    micro_research_data.model_dump(mode="json")
+                    if micro_research_data
+                    else None
+                ),
+                "macro_research_data": (
+                    macro_research_data.model_dump(mode="json")
+                    if macro_research_data
+                    else None
+                ),
                 "micro_view": micro_view.model_dump(mode="json"),
                 "macro_view": macro_view.model_dump(mode="json"),
                 "investor_reasoning_inputs": {
@@ -343,6 +454,16 @@ def main() -> int:
         start=1,
     ):
         print(f"Investor {number}/{total}: {investor_id}...", flush=True)
+        print(
+            f"Investor step {number}/{total} · {investor_id} · "
+            "reviewing retrieved mental models...",
+            flush=True,
+        )
+        print(
+            f"Investor step {number}/{total} · {investor_id} · "
+            "applying mental-model inference...",
+            flush=True,
+        )
         investor_outputs[investor_id] = run_investor_reasoning(
             data,
             model=models["investor"],
@@ -363,6 +484,9 @@ def main() -> int:
 
     result = InvestmentCommitteeOutput(
         question=question,
+        external_research_settings=external_settings,
+        micro_research_data=micro_research_data,
+        macro_research_data=macro_research_data,
         micro_view=micro_view,
         macro_view=macro_view,
         investor_reasoning_inputs=investor_data,

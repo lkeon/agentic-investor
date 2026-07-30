@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import (
@@ -29,6 +29,17 @@ ClaimStatus = Literal[
     "user_assumption",
     "unknown",
 ]
+ResearchGapStatus = Literal[
+    "not_reported",
+    "not_applicable",
+    "source_disabled",
+    "configuration_missing",
+    "fetch_failed",
+    "ambiguous_identity",
+    "calculation_unavailable",
+    "stale",
+]
+DataFreshness = Literal["current", "delayed", "stale", "unavailable"]
 
 
 class InvestmentQuestion(BaseModel):
@@ -48,6 +59,7 @@ class InvestmentQuestion(BaseModel):
     known_facts: list[str] = Field(default_factory=list, max_length=12)
     user_constraints: list[str] = Field(default_factory=list, max_length=10)
     uncertainties: list[str] = Field(default_factory=list, max_length=12)
+
 
 class ResearchSource(BaseModel):
     """One source made available to the structured researcher."""
@@ -76,6 +88,185 @@ class EvidenceClaim(BaseModel):
     source_ids: list[str] = Field(default_factory=list, max_length=8)
     confidence: float = Field(ge=0.0, le=1.0)
     as_of_date: date | None = None
+
+
+class ExternalResearchSettings(BaseModel):
+    """Strict source and volume controls for optional external research."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    sec_filings_enabled: bool = True
+    investor_relations_enabled: bool = True
+    market_data_enabled: bool = True
+    rates_and_credit_enabled: bool = True
+    aggregate_valuation_enabled: bool = True
+    credit_rating_enabled: bool = False
+
+    max_filings: int = Field(default=2, ge=0, le=2)
+    max_ir_documents: int = Field(default=1, ge=0, le=4)
+
+
+class ResearchGap(BaseModel):
+    """One explicit reason why a requested external fact is unavailable."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    field: str = Field(min_length=1, max_length=160)
+    status: ResearchGapStatus
+    detail: str = Field(min_length=3, max_length=600)
+
+
+class FinancialPeriodData(BaseModel):
+    """One completed fiscal year of normalized company financial data."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    fiscal_year: int
+    period_end: date
+    currency: str = Field(default="USD", min_length=3, max_length=12)
+    unit_scale: Literal["millions"] = "millions"
+
+    revenue: float | None = None
+    ebitda: float | None = None
+    ebitda_basis: Literal[
+        "reported",
+        "operating_income_plus_da",
+        "operating_income_fallback",
+        "unavailable",
+    ] = "unavailable"
+    operating_cash_flow: float | None = None
+    capital_expenditure: float | None = None
+    free_cash_flow: float | None = None
+    total_debt: float | None = None
+    cash_and_equivalents: float | None = None
+    net_debt: float | None = None
+
+
+class MicroResearchData(BaseModel):
+    """Bounded, source-collected company data supplied to MicroView."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    as_of_date: date
+    company_name: str = Field(min_length=1, max_length=300)
+    ticker: str | None = Field(default=None, max_length=40)
+    cik: str | None = Field(default=None, max_length=20)
+    currency: str = Field(default="USD", min_length=3, max_length=12)
+    company_description: str | None = Field(default=None, max_length=1200)
+
+    financial_periods: list[FinancialPeriodData] = Field(
+        default_factory=list,
+        max_length=4,
+    )
+    revenue_cagr: float | None = None
+    latest_ebitda_margin: float | None = None
+    latest_fcf_margin: float | None = None
+    latest_net_debt_to_ebitda: float | None = None
+
+    share_price: float | None = None
+    share_price_date: date | None = None
+    shares_outstanding: float | None = None
+    shares_outstanding_date: date | None = None
+    market_cap: float | None = None
+    enterprise_value: float | None = None
+    ev_to_ebitda: float | None = None
+    fcf_yield: float | None = None
+
+    credit_rating: str | None = Field(default=None, max_length=20)
+    qualitative_observations: list[EvidenceClaim] = Field(
+        default_factory=list,
+        max_length=3,
+    )
+    sources: list[ResearchSource] = Field(default_factory=list, max_length=12)
+    gaps: list[ResearchGap] = Field(default_factory=list, max_length=24)
+
+    filings_fetched: int = Field(default=0, ge=0, le=2)
+    ir_documents_fetched: int = Field(default=0, ge=0, le=2)
+    discovery_searches_used: int = Field(default=0, ge=0, le=3)
+    external_requests_used: int = Field(default=0, ge=0, le=16)
+
+    @model_validator(mode="after")
+    def validate_research_sources(self) -> MicroResearchData:
+        _validate_evidence(
+            claims=self.qualitative_observations,
+            sources=self.sources,
+        )
+        years = [period.fiscal_year for period in self.financial_periods]
+        if len(years) != len(set(years)):
+            raise ValueError("Financial fiscal years must be unique.")
+        if years != sorted(years):
+            raise ValueError("Financial periods must be ordered oldest first.")
+        if (
+            self.company_description
+            and len(self.company_description.split()) > 100
+        ):
+            raise ValueError(
+                "Company description cannot exceed 100 words."
+            )
+        return self
+
+
+class MacroIndicatorData(BaseModel):
+    """One compressed daily macro or aggregate-valuation indicator."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    indicator_id: Literal[
+        "treasury_5y",
+        "investment_grade_credit_spread",
+        "buffett_indicator_proxy",
+        "shiller_cape",
+    ]
+    label: str = Field(min_length=3, max_length=160)
+    current: float | None = None
+    one_year_ago: float | None = None
+    comparison_average: float | None = None
+    historical_percentile: float | None = Field(default=None, ge=0, le=100)
+    unit: str = Field(min_length=1, max_length=80)
+    observation_date: date | None = None
+    freshness: DataFreshness
+    source_ids: list[str] = Field(min_length=1, max_length=3)
+    methodology: str = Field(min_length=3, max_length=800)
+
+
+class MacroResearchData(BaseModel):
+    """Company-independent daily US market environment source data."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    applicable_date: date
+    generated_at: datetime
+    region: Literal["US"] = "US"
+    schema_version: int = Field(default=1, ge=1)
+    indicators: list[MacroIndicatorData] = Field(
+        default_factory=list,
+        max_length=4,
+    )
+    indicative_borrowing_yield: float | None = None
+    sources: list[ResearchSource] = Field(default_factory=list, max_length=8)
+    gaps: list[ResearchGap] = Field(default_factory=list, max_length=12)
+    external_requests_used: int = Field(default=0, ge=0, le=5)
+
+    @model_validator(mode="after")
+    def validate_indicator_sources(self) -> MacroResearchData:
+        indicator_ids = [
+            indicator.indicator_id for indicator in self.indicators
+        ]
+        if len(indicator_ids) != len(set(indicator_ids)):
+            raise ValueError("Macro indicator IDs must be unique.")
+        source_ids = [source.source_id for source in self.sources]
+        if len(source_ids) != len(set(source_ids)):
+            raise ValueError("Macro research source IDs must be unique.")
+        known_sources = set(source_ids)
+        for indicator in self.indicators:
+            unknown = set(indicator.source_ids) - known_sources
+            if unknown:
+                raise ValueError(
+                    f"Macro indicator {indicator.indicator_id} references "
+                    f"unknown sources: {sorted(unknown)}"
+                )
+        return self
 
 
 def _disambiguate_duplicate_claim_ids(
@@ -591,6 +782,11 @@ class InvestmentCommitteeOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     question: InvestmentQuestion
+    external_research_settings: ExternalResearchSettings = Field(
+        default_factory=ExternalResearchSettings
+    )
+    micro_research_data: MicroResearchData | None = None
+    macro_research_data: MacroResearchData | None = None
     micro_view: MicroView
     macro_view: MacroView
     investor_reasoning_inputs: dict[str, OneInvestorReasoningInput]

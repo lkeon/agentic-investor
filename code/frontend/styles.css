@@ -115,28 +115,11 @@ footer {
 }
 
 .input-heading {
-  display: grid;
-  grid-template-columns: 2rem 1fr;
-  gap: 0.75rem;
-  align-items: start;
   margin: 1.25rem 0 0.6rem;
 }
 
 .input-heading:first-of-type {
   margin-top: 0;
-}
-
-.input-heading > span {
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 1px solid #d4dbd6;
-  border-radius: 999px;
-  color: #66736d;
-  background: #f7f8f6;
-  font-size: 0.67rem;
-  font-weight: 800;
 }
 
 .input-heading strong {
@@ -161,11 +144,7 @@ footer {
   line-height: 1.45;
 }
 
-.attachment-heading {
-  margin-top: 1.15rem;
-}
-
-[data-testid="stForm"] {
+.st-key-committee_form [data-testid="stVerticalBlockBorderWrapper"] {
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid var(--line);
   border-radius: 1.1rem;
@@ -279,13 +258,6 @@ footer {
   letter-spacing: 0.1em;
 }
 
-.investor-selector-copy {
-  color: #68766f;
-  font-size: 0.82rem;
-  font-weight: 400;
-  line-height: 1.45;
-}
-
 [data-testid="stButtonGroup"]
   [role="radiogroup"][aria-label="Choose an investor perspective"]
   button {
@@ -375,7 +347,7 @@ footer {
   font-weight: 650;
 }
 
-[data-testid="stFormSubmitButton"] button[kind="primary"] {
+.st-key-committee_form .stButton > button[kind="primary"] {
   background: var(--forest);
   border-color: var(--forest);
   min-height: 3.15rem;
@@ -385,6 +357,44 @@ footer {
   background: #f0f2ef;
   border-color: #d8ded9;
   box-shadow: none;
+}
+
+.diligence-progress {
+  height: 0.5rem;
+  margin: 0.05rem 0 1rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dce5df;
+}
+
+.diligence-progress-fill {
+  position: relative;
+  height: 100%;
+  min-width: 0.5rem;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--forest);
+  transition: width 420ms ease;
+}
+
+.diligence-progress.active .diligence-progress-fill::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(
+    100deg,
+    transparent 18%,
+    rgba(255, 255, 255, 0.38) 48%,
+    transparent 78%
+  );
+  transform: translateX(-110%);
+  animation: diligence-progress-shimmer 1.7s ease-in-out infinite;
+}
+
+@keyframes diligence-progress-shimmer {
+  to {
+    transform: translateX(110%);
+  }
 }
 
 .customer-progress {
@@ -430,6 +440,20 @@ footer {
   border-color: var(--forest);
   background: var(--forest);
   box-shadow: 0 0 0 4px rgba(33, 77, 62, 0.09);
+  animation: diligence-marker-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes diligence-marker-pulse {
+  50% {
+    box-shadow: 0 0 0 7px rgba(33, 77, 62, 0.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diligence-progress.active .diligence-progress-fill::after,
+  .customer-progress-step.active .customer-progress-marker {
+    animation: none;
+  }
 }
 
 .customer-progress-step strong {

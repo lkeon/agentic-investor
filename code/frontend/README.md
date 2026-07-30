@@ -17,6 +17,8 @@ The interface presents two decision stages:
 It also provides:
 
 - investment-question and optional research input;
+- opt-in bounded external research with per-source controls;
+- explicit filing, official-IR-document, and discovery-search limits;
 - selection of every available investor perspective;
 - compact mental-model retrieval controls;
 - an always-visible, plain-language diligence timeline beneath the run controls;
@@ -35,11 +37,13 @@ The interface retains up to 8,000 technical lines without removing CrewAI
 trace panels. When a run fails, the technical window is displayed
 automatically even if verbose logging was not selected.
 
-The MVP does not perform live web research. It treats the output as decision
-support rather than personalised financial advice. It has no fixed holding
-period: the product supports continued ownership only while the core business
-thesis remains valid. Macro is shown as a secondary condition and matters only
-when it has a direct, material effect on that thesis.
+External research is disabled by default. When enabled, source-specific
+collectors gather bounded official evidence before the reasoning stages;
+investor and CIO agents never browse. It treats the output as decision support
+rather than personalised financial advice. It has no fixed holding period:
+the product supports continued ownership only while the core business thesis
+remains valid. One shared daily US MacroView is secondary and matters only when
+its company-specific transmission is material.
 
 Reasoning stages may use direct providers or OpenRouter independently through
 the root `.env`; OpenAI embedding configuration remains separate. See
@@ -69,6 +73,8 @@ data/processed/crew/committee_result.json
 
 - Python 3.13 with the root `requirements.txt` installed;
 - a root `.env` containing valid `OPENAI_API_KEY` and `DATABASE_URL`;
+- for optional external sources: `SEC_USER_AGENT`, `ALPACA_API_KEY_ID`,
+  `ALPACA_API_SECRET_KEY`, `FRED_API_KEY`, and `EXA_API_KEY`;
 - PostgreSQL containing the canonical mental-model data;
 - permission to run `systemctl start postgresql` when the configured database
   is unavailable.

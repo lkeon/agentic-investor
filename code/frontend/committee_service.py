@@ -237,8 +237,25 @@ def load_latest_result() -> dict[str, object] | None:
         return None
 
 
+def _external_stage_update(line: str) -> ProgressUpdate | None:
+    """Expose one external-research milestone without provider noise."""
+
+    if line.startswith("External research | "):
+        parts = line.split(" | ", 3)
+        if len(parts) != 4:
+            return None
+        _, provider, status, detail = parts
+        if provider == "Company evidence" and status.lower() == "complete":
+            return ProgressUpdate("Bounded research complete", 26, detail)
+    return None
+
+
 def _stage_update(line: str) -> ProgressUpdate | None:
     """Translate stable CLI messages into customer-facing progress."""
+
+    external_update = _external_stage_update(line)
+    if external_update is not None:
+        return external_update
 
     fixed_stages = (
         (
@@ -251,12 +268,23 @@ def _stage_update(line: str) -> ProgressUpdate | None:
             ),
         ),
         (
+            "Collecting bounded MicroResearchData",
+            "Gathering bounded company evidence",
+            12,
+            (
+                "Official filings, company documents, and selected market "
+                "reference data are being gathered within the configured "
+                "document and search limits."
+            ),
+        ),
+        (
             "Building MicroView",
             "Structuring company evidence",
-            20,
+            28,
             (
-                "The supplied company, financial, management, valuation, and "
-                "risk evidence is being organised into an auditable MicroView."
+                "Supplied and externally collected company, financial, "
+                "management, valuation, and risk evidence is being organised "
+                "into an auditable MicroView."
             ),
         ),
         (
@@ -269,7 +297,16 @@ def _stage_update(line: str) -> ProgressUpdate | None:
             ),
         ),
         (
-            "Building mental-model data bridges",
+            "Loading shared daily MacroView",
+            "Preparing the shared market environment",
+            30,
+            (
+                "The bounded US rates, credit, Buffett Indicator proxy, and "
+                "Shiller CAPE record is being loaded or constructed for the day."
+            ),
+        ),
+        (
+            "Building mental-model bridges",
             "Defining analytical pathways",
             43,
             (
@@ -324,6 +361,20 @@ def _stage_update(line: str) -> ProgressUpdate | None:
             ),
         )
 
+    investor_step = re.search(
+        r"Investor step (\d+)/(\d+) · ([^·]+) · (.+?)(?:\.\.\.)?$",
+        line,
+    )
+    if investor_step:
+        current, total, investor_id, action = investor_step.groups()
+        investor_name = display_name(investor_id.strip())
+        fraction = int(current) / max(1, int(total))
+        return ProgressUpdate(
+            f"Independent analysis · {investor_name}",
+            55 + round(37 * fraction),
+            f"{investor_name} is {action.strip().rstrip('.')}.",
+        )
+
     if "PostgreSQL is unavailable" in line:
         return ProgressUpdate(
             "Preparing the model library",
@@ -348,24 +399,15 @@ def display_name(identifier: str) -> str:
     return identifier.replace("_", " ").replace("-", " ").title()
 
 
-def run_committee(
+def _build_committee_command(
     question: str,
     *,
     investors: list[str],
-    research_context: str | None,
     top_k: int,
     neighbours: int,
-    technical_debug: bool = False,
-    on_progress: Callable[[ProgressUpdate, list[str]], None] | None = None,
-) -> dict[str, object]:
-    """Run the real committee CLI and return its validated JSON artifact."""
-
-    global _ACTIVE_PROCESS
-
-    if not question.strip():
-        raise ValueError("An investment question is required.")
-    if not investors:
-        raise ValueError("Select at least one investor perspective.")
+    external_research_settings: dict[str, object] | None,
+) -> list[str]:
+    """Build one explicit CLI command from validated frontend controls."""
 
     command = [
         sys.executable,
@@ -379,8 +421,66 @@ def run_committee(
         "--output-path",
         str(DEFAULT_OUTPUT_PATH),
     ]
+    research_settings = external_research_settings or {}
+    if bool(research_settings.get("enabled", False)):
+        command.append("--external-research")
+        boolean_options = {
+            "sec_filings_enabled": ("sec-filings", True),
+            "investor_relations_enabled": ("investor-relations", True),
+            "market_data_enabled": ("market-data", True),
+            "rates_and_credit_enabled": ("rates-and-credit", True),
+            "aggregate_valuation_enabled": ("aggregate-valuation", True),
+            "credit_rating_enabled": ("credit-rating", False),
+        }
+        for setting_name, (option_name, default) in boolean_options.items():
+            command.append(
+                f"--{option_name}"
+                if bool(research_settings.get(setting_name, default))
+                else f"--no-{option_name}"
+            )
+        numeric_options = {
+            "max_filings": ("max-filings", 2),
+            "max_ir_documents": ("max-ir-documents", 1),
+        }
+        for setting_name, (option_name, default) in numeric_options.items():
+            command.extend(
+                [
+                    f"--{option_name}",
+                    str(research_settings.get(setting_name, default)),
+                ]
+            )
     for investor_id in investors:
         command.extend(["--investor", investor_id])
+    return command
+
+
+def run_committee(
+    question: str,
+    *,
+    investors: list[str],
+    research_context: str | None,
+    top_k: int,
+    neighbours: int,
+    external_research_settings: dict[str, object] | None = None,
+    technical_debug: bool = False,
+    on_progress: Callable[[ProgressUpdate, list[str]], None] | None = None,
+) -> dict[str, object]:
+    """Run the real committee CLI and return its validated JSON artifact."""
+
+    global _ACTIVE_PROCESS
+
+    if not question.strip():
+        raise ValueError("An investment question is required.")
+    if not investors:
+        raise ValueError("Select at least one investor perspective.")
+
+    command = _build_committee_command(
+        question,
+        investors=investors,
+        top_k=top_k,
+        neighbours=neighbours,
+        external_research_settings=external_research_settings,
+    )
     if technical_debug:
         # CrewAI verbose output is useful for prompt, task, tool, validation,
         # timing, and model-quality diagnosis. It is shown only in the local

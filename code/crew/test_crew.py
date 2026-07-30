@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import unittest
-from datetime import date
+from datetime import date, datetime, timezone
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -22,23 +25,42 @@ from crew.agents import (
     run_investor_reasoning,
 )
 from crew.config import create_reasoning_llm, qualify_reasoning_model
+from crew.research.alpaca import _market_data
+from crew.research.common import (
+    PROJECT_ROOT,
+    ExternalResearchError,
+    _RequestBudget,
+)
+from crew.research.exa import EXA_IR_OUTPUT_SCHEMA, _collect_ir
+from crew.research.macro import (
+    DEFAULT_MACRO_STORE,
+    get_or_build_daily_macro,
+    macro_research_to_view,
+)
+from crew.research.micro import merge_micro_research
 from crew.retrieval import _build_adjacency, _normalise
 from crew.run_crew import _ensure_database_running
+from crew.research.sec import _collect_sec, _latest_shares_outstanding
 from crew.schemas import (
     CIOReasoningInput,
     CIOReasoningOutput,
     EvidenceClaim,
+    ExternalResearchSettings,
+    FinancialPeriodData,
     InvestmentQuestion,
     OneInvestorReasoningInput,
     InvestorReasoningOutput,
     MentalModelInference,
     MacroView,
+    MacroIndicatorData,
+    MacroResearchData,
     MentalModelCandidate,
     MentalModelBridge,
     MentalModelBridgeDraft,
     MentalModelBridgeDraftList,
     MentalModelBridgeList,
     MicroView,
+    MicroResearchData,
     ResearchSource,
 )
 
@@ -373,6 +395,424 @@ class SchemaTests(unittest.TestCase):
             "Investment view must contain at least 80 words",
         ):
             InvestorReasoningOutput.model_validate(payload)
+
+    def test_external_research_limits_are_hard_schema_limits(self) -> None:
+        with self.assertRaises(ValidationError):
+            ExternalResearchSettings(max_ir_documents=5)
+        with self.assertRaises(ValidationError):
+            ExternalResearchSettings(max_filings=3)
+
+
+class ExternalResearchTests(unittest.TestCase):
+    def test_research_paths_resolve_to_the_repository(self) -> None:
+        repository = Path(__file__).resolve().parents[2]
+        self.assertEqual(PROJECT_ROOT, repository)
+        self.assertEqual(
+            DEFAULT_MACRO_STORE,
+            repository / "data" / "processed" / "crew" / "macro_views",
+        )
+
+    def _macro_data(self) -> MacroResearchData:
+        return MacroResearchData(
+            applicable_date=TODAY,
+            generated_at=datetime.now(timezone.utc),
+            indicators=[
+                MacroIndicatorData(
+                    indicator_id="treasury_5y",
+                    label="5-year US Treasury yield",
+                    current=4.0,
+                    one_year_ago=3.5,
+                    comparison_average=3.75,
+                    historical_percentile=70,
+                    unit="percent",
+                    observation_date=TODAY,
+                    freshness="current",
+                    source_ids=["fred_dgs5"],
+                    methodology="Test methodology.",
+                )
+            ],
+            sources=[
+                ResearchSource(
+                    source_id="fred_dgs5",
+                    title="5-year Treasury",
+                    publisher="FRED",
+                    source_type="FRED rates",
+                )
+            ],
+            external_requests_used=1,
+        )
+
+    def test_request_budget_counts_attempts_and_stops(self) -> None:
+        budget = _RequestBudget(maximum=2)
+        budget.take()
+        budget.take()
+        with self.assertRaises(ExternalResearchError):
+            budget.take()
+
+    def test_latest_sec_shares_outstanding_are_selected(self) -> None:
+        facts = {
+            "facts": {
+                "dei": {
+                    "EntityCommonStockSharesOutstanding": {
+                        "units": {
+                            "shares": [
+                                {
+                                    "form": "10-Q",
+                                    "end": "2025-09-30",
+                                    "filed": "2025-11-01",
+                                    "val": 100,
+                                },
+                                {
+                                    "form": "10-K",
+                                    "end": "2025-12-31",
+                                    "filed": "2026-02-01",
+                                    "val": 110,
+                                },
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+
+        self.assertEqual(
+            _latest_shares_outstanding(facts, as_of_date=TODAY),
+            (110.0, date(2025, 12, 31)),
+        )
+
+    def test_oversized_sec_filing_becomes_a_gap(self) -> None:
+        filing = {
+            "form": "10-K",
+            "accession": "0000000000-26-000001",
+            "primary_document": "annual-report.htm",
+            "filing_date": TODAY.isoformat(),
+        }
+        with (
+            patch(
+                "crew.research.sec._resolve_sec_identity",
+                return_value=("Example Company", "EXM", "0000000001"),
+            ),
+            patch("crew.research.sec._sec_headers", return_value={}),
+            patch(
+                "crew.research.sec._request_json",
+                side_effect=[
+                    {"entityName": "Example Company", "facts": {}},
+                    {},
+                ],
+            ),
+            patch("crew.research.sec._latest_filings", return_value=[filing]),
+            patch(
+                "crew.research.sec._request_bytes",
+                side_effect=ExternalResearchError("Source payload exceeded limit."),
+            ),
+        ):
+            result = _collect_sec(
+                _question(),
+                ExternalResearchSettings(max_filings=1),
+                budget=_RequestBudget(maximum=8),
+            )
+
+        self.assertEqual(result["filings_fetched"], 0)
+        self.assertTrue(
+            any(gap.field == "10-K document" for gap in result["gaps"])
+        )
+
+    @patch.dict(
+        "os.environ",
+        {
+            "ALPACA_API_KEY_ID": "test-key",
+            "ALPACA_API_SECRET_KEY": "test-secret",
+            "ALPACA_DATA_API_BASE": "https://data.example",
+        },
+    )
+    @patch(
+        "crew.research.alpaca._request_json",
+        return_value={
+            "latestTrade": {
+                "p": 42.5,
+                "t": "2026-07-24T19:59:59Z",
+            }
+        },
+    )
+    def test_alpaca_snapshot_uses_one_market_request(
+        self,
+        request_json: object,
+    ) -> None:
+        result = _market_data(
+            "EXM",
+            budget=_RequestBudget(maximum=2),
+        )
+
+        self.assertEqual(result["share_price"], 42.5)
+        self.assertEqual(result["share_price_date"], TODAY)
+        self.assertEqual(result["source"].publisher, "Alpaca")
+        request_json.assert_called_once()
+        self.assertIn(
+            "/v2/stocks/EXM/snapshot?feed=iex",
+            request_json.call_args.args[0],
+        )
+        self.assertEqual(
+            request_json.call_args.kwargs["headers"]["APCA-API-KEY-ID"],
+            "test-key",
+        )
+        self.assertEqual(
+            request_json.call_args.kwargs["headers"]["APCA-API-SECRET-KEY"],
+            "test-secret",
+        )
+        self.assertNotIn("test-key", request_json.call_args.args[0])
+
+    @patch.dict("os.environ", {"EXA_API_KEY": "test-exa-key"})
+    @patch(
+        "crew.research.exa._request_json",
+        return_value={
+            "results": [
+                {
+                    "title": "Example Company annual report",
+                    "url": "https://www.example.com/investors/annual-report",
+                    "publishedDate": "2026-06-30T00:00:00.000Z",
+                }
+            ],
+            "output": {
+                "content": {
+                    "company_description": (
+                        "Example Company operates a focused industrial business."
+                    ),
+                    "qualitative_observations": [
+                        "Management prioritises reinvestment at attractive returns.",
+                        "The company maintains substantial available liquidity.",
+                    ],
+                    "credit_rating": "AA-",
+                },
+                "grounding": [
+                    {
+                        "field": "company_description",
+                        "confidence": "high",
+                        "citations": [
+                            {
+                                "title": "Example Company annual report",
+                                "url": (
+                                    "https://www.example.com/investors/"
+                                    "annual-report"
+                                ),
+                            }
+                        ],
+                    },
+                    {
+                        "field": "qualitative_observations",
+                        "confidence": "medium",
+                        "citations": [
+                            {
+                                "title": "Example Company annual report",
+                                "url": (
+                                    "https://www.example.com/investors/"
+                                    "annual-report"
+                                ),
+                            }
+                        ],
+                    },
+                    {
+                        "field": "credit_rating",
+                        "confidence": "high",
+                        "citations": [
+                            {
+                                "title": "Example Company annual report",
+                                "url": (
+                                    "https://www.example.com/investors/"
+                                    "annual-report"
+                                ),
+                            }
+                        ],
+                    },
+                ],
+            },
+        },
+    )
+    def test_exa_ir_search_uses_schema_and_grounded_official_sources(
+        self,
+        request_json: object,
+    ) -> None:
+        result = _collect_ir(
+            "Example Company",
+            ticker="EXM",
+            settings=ExternalResearchSettings(
+                enabled=True,
+                credit_rating_enabled=True,
+                max_ir_documents=1,
+            ),
+            budget=_RequestBudget(maximum=2),
+        )
+
+        self.assertEqual(result["searches"], 1)
+        self.assertEqual(result["documents"], 1)
+        self.assertEqual(result["rating"], "AA-")
+        self.assertEqual(len(result["observations"]), 2)
+        self.assertEqual(
+            result["description"],
+            "Example Company operates a focused industrial business.",
+        )
+        request_json.assert_called_once()
+        request = request_json.call_args
+        self.assertEqual(request.args[0], "https://api.exa.ai/search")
+        self.assertEqual(request.kwargs["headers"]["x-api-key"], "test-exa-key")
+        body = json.loads(request.kwargs["data"])
+        self.assertEqual(body["outputSchema"], EXA_IR_OUTPUT_SCHEMA)
+        self.assertEqual(body["type"], "auto")
+        self.assertNotIn("api_key", body)
+
+    @patch.dict("os.environ", {"EXA_API_KEY": "test-exa-key"})
+    @patch(
+        "crew.research.exa._request_json",
+        return_value={
+            "results": [],
+            "output": {
+                "content": {
+                    "company_description": "An unsupported description.",
+                    "qualitative_observations": [
+                        "An unsupported management claim."
+                    ],
+                    "credit_rating": "AAA",
+                },
+                "grounding": [
+                    {
+                        "field": "content",
+                        "confidence": "high",
+                        "citations": [
+                            {
+                                "title": "Third-party article",
+                                "url": "https://www.reuters.com/example",
+                            }
+                        ],
+                    }
+                ],
+            },
+        },
+    )
+    def test_exa_ir_discards_non_official_grounding(
+        self,
+        _: object,
+    ) -> None:
+        result = _collect_ir(
+            "Example Company",
+            ticker="EXM",
+            settings=ExternalResearchSettings(
+                enabled=True,
+                credit_rating_enabled=True,
+                max_ir_documents=1,
+            ),
+            budget=_RequestBudget(maximum=2),
+        )
+
+        self.assertEqual(result["sources"], [])
+        self.assertEqual(result["observations"], [])
+        self.assertIsNone(result["description"])
+        self.assertIsNone(result["rating"])
+        self.assertEqual(result["gaps"][0].status, "ambiguous_identity")
+
+    def test_shared_macro_view_has_no_company_transmission(self) -> None:
+        view = macro_research_to_view(self._macro_data())
+
+        self.assertEqual(view.company_transmission_channels, [])
+        self.assertEqual(view.environment[0].value, 4.0)
+        self.assertEqual(view.environment[0].source_ids, ["fred_dgs5"])
+
+    def test_daily_macro_artifact_is_reused_without_recollection(self) -> None:
+        research = self._macro_data()
+        view = macro_research_to_view(research)
+        settings = ExternalResearchSettings(enabled=True)
+        progress_messages: list[str] = []
+        with TemporaryDirectory() as directory:
+            with (
+                patch.dict(
+                    "os.environ",
+                    {"MACRO_VIEW_STORE_PATH": directory},
+                ),
+                patch(
+                    "crew.research.macro.collect_macro_research",
+                    return_value=research,
+                ) as collector,
+            ):
+                first = get_or_build_daily_macro(
+                    settings,
+                    applicable_date=TODAY,
+                    progress=progress_messages.append,
+                )
+                second = get_or_build_daily_macro(
+                    settings,
+                    applicable_date=TODAY,
+                    progress=progress_messages.append,
+                )
+
+            self.assertEqual(first, (research, view))
+            self.assertEqual(second, (research, view))
+            collector.assert_called_once()
+            artifacts = list(Path(directory).glob("*.json"))
+            self.assertEqual(len(artifacts), 1)
+            payload = json.loads(artifacts[0].read_text(encoding="utf-8"))
+            self.assertIn("macro_view", payload)
+            self.assertTrue(
+                any(
+                    "Daily MacroView | reused" in message
+                    for message in progress_messages
+                )
+            )
+            self.assertTrue(
+                any(
+                    "Daily MacroView | reused" in message
+                    and "Sources: 5-year Treasury" in message
+                    for message in progress_messages
+                )
+            )
+
+    def test_micro_merge_hydrates_exact_collector_values(self) -> None:
+        source = ResearchSource(
+            source_id="sec_companyfacts_1",
+            title="Company Facts",
+            publisher="SEC",
+            source_type="SEC XBRL company facts",
+        )
+        data = MicroResearchData(
+            as_of_date=TODAY,
+            company_name="Example Company",
+            ticker="EXM",
+            cik="0000000001",
+            financial_periods=[
+                FinancialPeriodData(
+                    fiscal_year=2025,
+                    period_end=TODAY,
+                    revenue=100,
+                    ebitda=20,
+                    ebitda_basis="operating_income_plus_da",
+                    free_cash_flow=10,
+                    total_debt=30,
+                    cash_and_equivalents=5,
+                    net_debt=25,
+                )
+            ],
+            sources=[source],
+        )
+        model_claim = EvidenceClaim(
+            claim_id="micro_model_paraphrase",
+            statement="The model changed the collected revenue to 999.",
+            status="reported_fact",
+            source_ids=[source.source_id],
+            confidence=0.5,
+        )
+        view = MicroView(
+            company_name="Wrong Name",
+            as_of_date=TODAY,
+            financial_performance=[model_claim],
+            sources=[source],
+        )
+
+        merged = merge_micro_research(view, data)
+
+        statements = [
+            claim.statement
+            for claim in merged.financial_performance
+        ]
+        self.assertFalse(any("999" in statement for statement in statements))
+        self.assertTrue(any("100.00" in statement for statement in statements))
+        self.assertEqual(merged.company_name, "Example Company")
 
 
 class DatabaseStartupTests(unittest.TestCase):
